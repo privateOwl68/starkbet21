@@ -1,0 +1,289 @@
+[
+  {
+    "type": "impl",
+    "name": "WagerWarImpl",
+    "interface_name": "shoe::interfaces::IWagerWar"
+  },
+  {
+    "type": "struct",
+    "name": "core::integer::u256",
+    "members": [
+      {
+        "name": "low",
+        "type": "core::integer::u128"
+      },
+      {
+        "name": "high",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "core::bool",
+    "variants": [
+      {
+        "name": "False",
+        "type": "()"
+      },
+      {
+        "name": "True",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "shoe::interfaces::SeasonView",
+    "members": [
+      {
+        "name": "season_id",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "start_ts",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "end_ts",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "open",
+        "type": "core::bool"
+      },
+      {
+        "name": "live",
+        "type": "core::bool"
+      },
+      {
+        "name": "player_count",
+        "type": "core::integer::u32"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "shoe::interfaces::LeaderEntry",
+    "members": [
+      {
+        "name": "player",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "volume",
+        "type": "core::integer::u256"
+      },
+      {
+        "name": "hands",
+        "type": "core::integer::u32"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "shoe::interfaces::IWagerWar",
+    "items": [
+      {
+        "type": "function",
+        "name": "set_game",
+        "inputs": [
+          {
+            "name": "game",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "open_season",
+        "inputs": [
+          {
+            "name": "start_ts",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "end_ts",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "close_season",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "record_wager",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          },
+          {
+            "name": "new_hand",
+            "type": "core::bool"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_season",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "shoe::interfaces::SeasonView"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_volume",
+        "inputs": [
+          {
+            "name": "season_id",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u256"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_hands",
+        "inputs": [
+          {
+            "name": "season_id",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u32"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_player_count",
+        "inputs": [
+          {
+            "name": "season_id",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::integer::u32"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_player_at",
+        "inputs": [
+          {
+            "name": "season_id",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "index",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_top",
+        "inputs": [
+          {
+            "name": "season_id",
+            "type": "core::integer::u64"
+          },
+          {
+            "name": "limit",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::array::Array::<shoe::interfaces::LeaderEntry>"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "owner",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "game",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "shoe::wager_war::wager_war::Event",
+    "kind": "enum",
+    "variants": []
+  }
+]

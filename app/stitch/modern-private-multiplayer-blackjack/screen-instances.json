@@ -1,0 +1,60 @@
+[
+  {
+    "id": "3602afeb52444d299e16180f5b58e583",
+    "sourceScreen": "projects/1703517402127213140/screens/3602afeb52444d299e16180f5b58e583",
+    "x": -1657,
+    "y": 1132,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "id": "38b8d168fa0941ebb140339e9bcab7c7",
+    "sourceScreen": "projects/1703517402127213140/screens/38b8d168fa0941ebb140339e9bcab7c7",
+    "x": 4864,
+    "width": 1280,
+    "height": 1194
+  },
+  {
+    "id": "54a4320777f343c6883820242da58514",
+    "sourceScreen": "projects/1703517402127213140/screens/54a4320777f343c6883820242da58514",
+    "x": 3520,
+    "width": 1280,
+    "height": 1132
+  },
+  {
+    "id": "8449f8aeaec44cd6b3b49ec3f794ae0b",
+    "sourceScreen": "projects/1703517402127213140/screens/8449f8aeaec44cd6b3b49ec3f794ae0b",
+    "x": 6208,
+    "width": 1280,
+    "height": 1780
+  },
+  {
+    "id": "957899a7206945749587f4c431ca4f56",
+    "sourceScreen": "projects/1703517402127213140/screens/957899a7206945749587f4c431ca4f56",
+    "x": 2176,
+    "width": 1280,
+    "height": 2010
+  },
+  {
+    "id": "a01b58bd0d134f42bdffa702061d58f8",
+    "sourceScreen": "projects/1703517402127213140/screens/a01b58bd0d134f42bdffa702061d58f8",
+    "x": 1008,
+    "y": -21,
+    "width": 512,
+    "height": 512
+  },
+  {
+    "id": "assets_97471965595d48d7a2327867fbbcd7e1",
+    "width": 960,
+    "height": 540,
+    "sourceAsset": "assets/97471965595d48d7a2327867fbbcd7e1",
+    "type": "DESIGN_SYSTEM_INSTANCE"
+  },
+  {
+    "id": "b2d4fdbb475e4051898a13a1c58c516a",
+    "sourceScreen": "projects/1703517402127213140/screens/b2d4fdbb475e4051898a13a1c58c516a",
+    "x": 1600,
+    "width": 512,
+    "height": 512
+  }
+]

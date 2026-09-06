@@ -1,0 +1,4 @@
+# https://docs.starknet.io/build/quickstart/devnet
+[sncast.devnet]
+url = "http://127.0.0.1:5051"
+account = "devnet"

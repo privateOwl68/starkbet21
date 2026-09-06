@@ -1,0 +1,11 @@
+[package]
+name = "shoe-prover"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Phase 5: add Stwo / chosen proving stack deps here.
+
+[lib]
+name = "shoe_prover"
+path = "src/lib.rs"

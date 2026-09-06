@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+target/
+**/target/
+dist/
+build/
+.venv/
+__pycache__/
+.claude/
+.cursor/
+.codex/
+stitch/*
+
+# Tooling / IDE
+.scarb/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+accounts.json
+**/keystore/
+*.pem
+app/src/lib/deployments.local.json
+
+# Cairo / Foundry
+contracts/target/
+snfoundry.toml.bak
+
+# Rust
+prover/target/
+
+# Logs / coverage
+*.log
+coverage/
+.nyc_output/

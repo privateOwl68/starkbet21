@@ -1,0 +1,15 @@
+{
+  "network": "devnet",
+  "rpcUrl": "/rpc",
+  "chainId": "SN_SEPOLIA",
+  "blackjackGame": "0xREPLACE_AFTER_DEPLOY",
+  "wagerWar": "0xREPLACE_AFTER_DEPLOY",
+  "classHash": "0xREPLACE",
+  "wagerWarClassHash": "0xREPLACE",
+  "shoeSeed": "42",
+  "warStartTs": 0,
+  "warEndTs": 0,
+  "accountAddress": "0x064b48806902a367c8598f4f95c305e8c1a1acba5f082d294a43793113115691",
+  "accountPrivateKey": "0x0000000000000000000000000000000071d7bb07b9a64f6f78ac4c816aff4da9",
+  "note": "Copy to deployments.local.json after ./scripts/deploy_local.sh (starknet-devnet --seed=0)."
+}
