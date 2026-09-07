@@ -88,8 +88,87 @@
       },
       {
         "type": "function",
+        "name": "credit_buy_in",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "release_cash_out",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "deposit_strk",
+        "inputs": [
+          {
+            "name": "amount",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_operator",
+        "inputs": [
+          {
+            "name": "operator",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "clear_operator",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
         "name": "deal",
         "inputs": [
+          {
+            "name": "bet",
+            "type": "core::integer::u256"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "deal_for",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
           {
             "name": "bet",
             "type": "core::integer::u256"
@@ -112,6 +191,22 @@
       },
       {
         "type": "function",
+        "name": "hit_for",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "hand_index",
+            "type": "core::integer::u8"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
         "name": "stand",
         "inputs": [
           {
@@ -124,8 +219,40 @@
       },
       {
         "type": "function",
+        "name": "stand_for",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "hand_index",
+            "type": "core::integer::u8"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
         "name": "double",
         "inputs": [
+          {
+            "name": "hand_index",
+            "type": "core::integer::u8"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "double_for",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
           {
             "name": "hand_index",
             "type": "core::integer::u8"
@@ -162,10 +289,50 @@
       },
       {
         "type": "function",
+        "name": "settle_for",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
         "name": "set_wager_war",
         "inputs": [
           {
             "name": "war",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_strk_vault",
+        "inputs": [
+          {
+            "name": "token",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "anonymizer",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "set_default_relayer",
+        "inputs": [
+          {
+            "name": "relayer",
             "type": "core::starknet::contract_address::ContractAddress"
           }
         ],
@@ -257,6 +424,33 @@
       },
       {
         "type": "function",
+        "name": "get_operator",
+        "inputs": [
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "default_relayer",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
         "name": "seed",
         "inputs": [],
         "outputs": [
@@ -280,6 +474,28 @@
       {
         "type": "function",
         "name": "owner",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "strk_token",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "anonymizer",
         "inputs": [],
         "outputs": [
           {

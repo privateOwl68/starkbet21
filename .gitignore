@@ -38,3 +38,8 @@ prover/target/
 *.log
 coverage/
 .nyc_output/
+
+
+contracts/.agents/*
+# Local Netlify folder
+.netlify

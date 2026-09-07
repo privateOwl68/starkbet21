@@ -1,22 +1,29 @@
 import { useState } from "react";
+import { ApprovalPanel } from "../components/ApprovalPanel";
+import { PrivacyPanel } from "../components/PrivacyPanel";
+import { formatStack } from "../lib/money";
+import { useWallet } from "../lib/WalletContext";
 
 type Props = {
-  onEnterTable: (mode: "localnet" | "local") => void;
+  onEnterTable: () => void;
+  tableStack?: bigint;
+  onStackRefresh?: () => void;
 };
 
-export function LobbyPage({ onEnterTable }: Props) {
+export function LobbyPage({ onEnterTable, tableStack = 0n, onStackRefresh }: Props) {
+  const { address, connectWallet, connecting } = useWallet();
   const [pass, setPass] = useState("");
   const [stake, setStake] = useState<"prive" | "social">("social");
-  const [name, setName] = useState("Velvet Shoe");
+  const [name, setName] = useState("StarkBet Suite");
   const [error, setError] = useState<string | null>(null);
 
-  const enter = (mode: "localnet" | "local") => {
+  const enter = () => {
     if (pass && pass.toUpperCase() !== "V21-8841" && pass.length < 4) {
       setError("Enter a valid suite pass (try V21-8841)");
       return;
     }
     setError(null);
-    onEnterTable(mode);
+    onEnterTable();
   };
 
   return (
@@ -24,15 +31,46 @@ export function LobbyPage({ onEnterTable }: Props) {
       <section className="lobby-hero">
         <p className="lobby-hero__eyebrow">Private Salon Series</p>
         <h1 className="lobby-hero__title">Your Table</h1>
-        <p className="lobby-hero__sub">
-          Instant entry to a sealed shoe · H17 · BJ 3:2 · Wager War seasons on Localnet
-        </p>
+        <p className="lobby-hero__sub">Sealed on-chain blackjack with wallet buy-in and optional gasless play</p>
+      </section>
+
+      <section className="lobby-chips glass-panel" aria-live="polite">
+        <div className="lobby-chips__meta">
+          <span className="lobby-chips__label">Table chips</span>
+          <strong className="lobby-chips__value">
+            {address ? formatStack(tableStack) : "Connect wallet"}
+          </strong>
+          <p className="lobby-chips__hint">
+            On-chain stack in the game contract (not your Ready ERC-20 balance). Mint via Pre-approve or Private buy-in.
+          </p>
+        </div>
+        <div className="lobby-chips__actions">
+          {!address ? (
+            <button
+              type="button"
+              className="btn btn--hit"
+              disabled={connecting}
+              onClick={() => void connectWallet()}
+            >
+              {connecting ? "Connecting…" : "Connect wallet"}
+            </button>
+          ) : (
+            <>
+              <button type="button" className="btn ghost" onClick={() => onStackRefresh?.()}>
+                Refresh
+              </button>
+              <button type="button" className="btn btn--deal" onClick={enter}>
+                Play
+              </button>
+            </>
+          )}
+        </div>
       </section>
 
       <div className="lobby-grid">
         <section className="glass-panel lobby-card">
           <h2>
-            <span aria-hidden>🎰</span> Instant Entry
+            <span aria-hidden>♠</span> Suite Entry
           </h2>
           <label className="lobby-field">
             <span>Enter VIP Room Pass</span>
@@ -49,15 +87,12 @@ export function LobbyPage({ onEnterTable }: Props) {
             </p>
           )}
           <div className="lobby-actions">
-            <button type="button" className="btn btn--deal" onClick={() => enter("localnet")}>
-              Enter Suite · Localnet
-            </button>
-            <button type="button" className="btn btn--gold" onClick={() => enter("local")}>
-              Practice · Off-chain
+            <button type="button" className="btn btn--deal" onClick={enter}>
+              Enter on-chain table
             </button>
           </div>
           <p className="hint" style={{ marginTop: "0.75rem" }}>
-            Latency: local · Shoe sealed until tx confirms
+            Connect a wallet, mint table chips, then deal sealed hands on Starknet.
           </p>
         </section>
 
@@ -89,8 +124,8 @@ export function LobbyPage({ onEnterTable }: Props) {
 
           <ul className="lobby-rules">
             <li>
-              <strong>Shoe Deck Density</strong>
-              <span>1 deck local · 6-deck UI label</span>
+              <strong>Shoe</strong>
+              <span>On-chain sealed shoe</span>
             </li>
             <li>
               <strong>Penetration</strong>
@@ -110,11 +145,22 @@ export function LobbyPage({ onEnterTable }: Props) {
             </li>
           </ul>
 
-          <button type="button" className="btn btn--hit" onClick={() => enter("localnet")}>
-            Open {name || "table"} →
+          <button type="button" className="btn btn--hit" onClick={enter}>
+            Open {name || "Suite"} →
           </button>
+          <p className="hint" style={{ marginTop: "0.65rem" }}>
+            Opens the on-chain table with your connected wallet.
+          </p>
         </section>
       </div>
+
+      <ApprovalPanel compact onChanged={() => onStackRefresh?.()} />
+      <PrivacyPanel
+        tableStack={tableStack}
+        onBuyInSuccess={() => {
+          onStackRefresh?.();
+        }}
+      />
     </main>
   );
 }

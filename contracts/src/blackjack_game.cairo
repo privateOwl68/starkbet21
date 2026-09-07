@@ -8,12 +8,13 @@ mod blackjack_game {
     use crate::interfaces::{IBlackjackGame, IWagerWarDispatcher, IWagerWarDispatcherTrait, RoundView};
     use crate::settlement::{blackjack_payout, even_money_win, lose, push_return};
     use crate::shoe::{commit_shoe, draw_card, unpack_card};
+    use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use core::num::traits::Zero;
     use starknet::storage::{
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
         StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
 
     const PHASE_IDLE: u8 = 0;
     const PHASE_PLAYER: u8 = 1;
@@ -23,6 +24,8 @@ mod blackjack_game {
     struct Storage {
         owner: ContractAddress,
         wager_war: ContractAddress,
+        strk_token: ContractAddress,
+        anonymizer: ContractAddress,
         shoe_commitment: felt252,
         seed: felt252,
         global_draw_index: u32,
@@ -35,6 +38,10 @@ mod blackjack_game {
         dealer_cards: Map<(ContractAddress, u8), u8>,
         hole_hidden: Map<ContractAddress, bool>,
         doubled: Map<ContractAddress, bool>,
+        /// Player → authorized table operator (relayer). Operator may play, not withdraw.
+        operators: Map<ContractAddress, ContractAddress>,
+        /// House default relayer players can approve in one click.
+        default_relayer: ContractAddress,
     }
 
     #[constructor]
@@ -49,13 +56,209 @@ mod blackjack_game {
     impl BlackjackGameImpl of IBlackjackGame<ContractState> {
         fn buy_in(ref self: ContractState, amount: u256) {
             assert(amount > 0, 'amount=0');
+            // Free mint for localnet / faucet demos. Prefer credit_buy_in via STRK20 anonymizer
+            // once the vault is configured.
             let player = get_caller_address();
             let bal = self.stacks.read(player);
             self.stacks.write(player, bal + amount);
         }
 
-        fn deal(ref self: ContractState, bet: u256) {
+        fn credit_buy_in(ref self: ContractState, player: ContractAddress, amount: u256) {
+            self.assert_anonymizer();
+            assert(player.is_non_zero(), 'zero player');
+            assert(amount > 0, 'amount=0');
+            let bal = self.stacks.read(player);
+            self.stacks.write(player, bal + amount);
+        }
+
+        fn release_cash_out(ref self: ContractState, player: ContractAddress, amount: u256) {
+            self.assert_anonymizer();
+            assert(player.is_non_zero(), 'zero player');
+            assert(amount > 0, 'amount=0');
+            assert(self.phases.read(player) != PHASE_PLAYER, 'round active');
+            let stack = self.stacks.read(player);
+            assert(stack >= amount, 'insufficient stack');
+            self.stacks.write(player, stack - amount);
+
+            let token = self.strk_token.read();
+            assert(token.is_non_zero(), 'vault unset');
+            let anon = get_caller_address();
+            let erc20 = IERC20Dispatcher { contract_address: token };
+            let ok = erc20.transfer(anon, amount);
+            assert(ok, 'strk transfer failed');
+        }
+
+        fn deposit_strk(ref self: ContractState, amount: u256) {
+            assert(amount > 0, 'amount=0');
             let player = get_caller_address();
+            let token = self.strk_token.read();
+            assert(token.is_non_zero(), 'vault unset');
+            let erc20 = IERC20Dispatcher { contract_address: token };
+            let ok = erc20.transfer_from(player, get_contract_address(), amount);
+            assert(ok, 'transfer_from failed');
+            let bal = self.stacks.read(player);
+            self.stacks.write(player, bal + amount);
+        }
+
+        fn set_operator(ref self: ContractState, operator: ContractAddress) {
+            let player = get_caller_address();
+            self.operators.write(player, operator);
+        }
+
+        fn clear_operator(ref self: ContractState) {
+            let player = get_caller_address();
+            self.operators.write(player, Zero::zero());
+        }
+
+        fn deal(ref self: ContractState, bet: u256) {
+            self.do_deal(get_caller_address(), bet);
+        }
+
+        fn deal_for(ref self: ContractState, player: ContractAddress, bet: u256) {
+            self.assert_player_or_operator(player);
+            self.do_deal(player, bet);
+        }
+
+        fn hit(ref self: ContractState, hand_index: u8) {
+            self.do_hit(get_caller_address(), hand_index);
+        }
+
+        fn hit_for(ref self: ContractState, player: ContractAddress, hand_index: u8) {
+            self.assert_player_or_operator(player);
+            self.do_hit(player, hand_index);
+        }
+
+        fn stand(ref self: ContractState, hand_index: u8) {
+            self.do_stand(get_caller_address(), hand_index);
+        }
+
+        fn stand_for(ref self: ContractState, player: ContractAddress, hand_index: u8) {
+            self.assert_player_or_operator(player);
+            self.do_stand(player, hand_index);
+        }
+
+        fn double(ref self: ContractState, hand_index: u8) {
+            self.do_double(get_caller_address(), hand_index);
+        }
+
+        fn double_for(ref self: ContractState, player: ContractAddress, hand_index: u8) {
+            self.assert_player_or_operator(player);
+            self.do_double(player, hand_index);
+        }
+
+        fn split(ref self: ContractState, hand_index: u8) {
+            let _ = hand_index;
+            assert(false, 'split later');
+        }
+
+        fn insurance(ref self: ContractState) {
+            assert(false, 'insurance later');
+        }
+
+        fn settle(ref self: ContractState) {
+            self.do_settle(get_caller_address());
+        }
+
+        fn settle_for(ref self: ContractState, player: ContractAddress) {
+            self.assert_player_or_operator(player);
+            self.do_settle(player);
+        }
+
+        fn set_wager_war(ref self: ContractState, war: ContractAddress) {
+            assert(get_caller_address() == self.owner.read(), 'only owner');
+            self.wager_war.write(war);
+        }
+
+        fn set_strk_vault(ref self: ContractState, token: ContractAddress, anonymizer: ContractAddress) {
+            assert(get_caller_address() == self.owner.read(), 'only owner');
+            assert(token.is_non_zero(), 'zero token');
+            assert(anonymizer.is_non_zero(), 'zero anonymizer');
+            self.strk_token.write(token);
+            self.anonymizer.write(anonymizer);
+        }
+
+        fn set_default_relayer(ref self: ContractState, relayer: ContractAddress) {
+            assert(get_caller_address() == self.owner.read(), 'only owner');
+            self.default_relayer.write(relayer);
+        }
+
+        fn shoe_commitment(self: @ContractState) -> felt252 {
+            self.shoe_commitment.read()
+        }
+
+        fn get_stack(self: @ContractState, player: ContractAddress) -> u256 {
+            self.stacks.read(player)
+        }
+
+        fn get_round(self: @ContractState, player: ContractAddress) -> RoundView {
+            RoundView {
+                phase: self.phases.read(player),
+                bet: self.bets.read(player),
+                stack: self.stacks.read(player),
+                draw_index: self.global_draw_index.read(),
+                shoe_commitment: self.shoe_commitment.read(),
+                hole_hidden: self.hole_hidden.read(player),
+                player_len: self.player_len.read(player),
+                dealer_len: self.dealer_len.read(player),
+            }
+        }
+
+        fn get_player_card(self: @ContractState, player: ContractAddress, index: u8) -> u8 {
+            self.player_cards.read((player, index))
+        }
+
+        fn get_dealer_card(self: @ContractState, player: ContractAddress, index: u8) -> u8 {
+            self.dealer_cards.read((player, index))
+        }
+
+        fn get_operator(self: @ContractState, player: ContractAddress) -> ContractAddress {
+            self.operators.read(player)
+        }
+
+        fn default_relayer(self: @ContractState) -> ContractAddress {
+            self.default_relayer.read()
+        }
+
+        fn seed(self: @ContractState) -> felt252 {
+            self.seed.read()
+        }
+
+        fn wager_war(self: @ContractState) -> ContractAddress {
+            self.wager_war.read()
+        }
+
+        fn owner(self: @ContractState) -> ContractAddress {
+            self.owner.read()
+        }
+
+        fn strk_token(self: @ContractState) -> ContractAddress {
+            self.strk_token.read()
+        }
+
+        fn anonymizer(self: @ContractState) -> ContractAddress {
+            self.anonymizer.read()
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn assert_anonymizer(self: @ContractState) {
+            let anon = self.anonymizer.read();
+            assert(anon.is_non_zero(), 'anonymizer unset');
+            assert(get_caller_address() == anon, 'only anonymizer');
+        }
+
+        fn assert_player_or_operator(self: @ContractState, player: ContractAddress) {
+            assert(player.is_non_zero(), 'zero player');
+            let caller = get_caller_address();
+            if caller == player {
+                return;
+            }
+            let op = self.operators.read(player);
+            assert(op.is_non_zero() && caller == op, 'not authorized');
+        }
+
+        fn do_deal(ref self: ContractState, player: ContractAddress, bet: u256) {
             assert(self.phases.read(player) != PHASE_PLAYER, 'round active');
             assert(bet > 0, 'bet=0');
             let stack = self.stacks.read(player);
@@ -90,9 +293,8 @@ mod blackjack_game {
             self.phases.write(player, PHASE_PLAYER);
         }
 
-        fn hit(ref self: ContractState, hand_index: u8) {
+        fn do_hit(ref self: ContractState, player: ContractAddress, hand_index: u8) {
             assert(hand_index == 0, 'no split v0');
-            let player = get_caller_address();
             assert(self.phases.read(player) == PHASE_PLAYER, 'not your turn');
             assert(!self.doubled.read(player), 'already doubled');
 
@@ -105,16 +307,14 @@ mod blackjack_game {
             }
         }
 
-        fn stand(ref self: ContractState, hand_index: u8) {
+        fn do_stand(ref self: ContractState, player: ContractAddress, hand_index: u8) {
             assert(hand_index == 0, 'no split v0');
-            let player = get_caller_address();
             assert(self.phases.read(player) == PHASE_PLAYER, 'not your turn');
             self.play_dealer_and_finish(player);
         }
 
-        fn double(ref self: ContractState, hand_index: u8) {
+        fn do_double(ref self: ContractState, player: ContractAddress, hand_index: u8) {
             assert(hand_index == 0, 'no split v0');
-            let player = get_caller_address();
             assert(self.phases.read(player) == PHASE_PLAYER, 'not your turn');
             assert(self.player_len.read(player) == 2, 'need 2 cards');
             assert(!self.doubled.read(player), 'already doubled');
@@ -138,17 +338,7 @@ mod blackjack_game {
             }
         }
 
-        fn split(ref self: ContractState, hand_index: u8) {
-            let _ = hand_index;
-            assert(false, 'split later');
-        }
-
-        fn insurance(ref self: ContractState) {
-            assert(false, 'insurance later');
-        }
-
-        fn settle(ref self: ContractState) {
-            let player = get_caller_address();
+        fn do_settle(ref self: ContractState, player: ContractAddress) {
             assert(self.phases.read(player) == PHASE_DONE, 'not settled');
             self.phases.write(player, PHASE_IDLE);
             self.clear_hands(player);
@@ -157,55 +347,6 @@ mod blackjack_game {
             self.hole_hidden.write(player, true);
         }
 
-        fn set_wager_war(ref self: ContractState, war: ContractAddress) {
-            assert(get_caller_address() == self.owner.read(), 'only owner');
-            self.wager_war.write(war);
-        }
-
-        fn shoe_commitment(self: @ContractState) -> felt252 {
-            self.shoe_commitment.read()
-        }
-
-        fn get_stack(self: @ContractState, player: ContractAddress) -> u256 {
-            self.stacks.read(player)
-        }
-
-        fn get_round(self: @ContractState, player: ContractAddress) -> RoundView {
-            RoundView {
-                phase: self.phases.read(player),
-                bet: self.bets.read(player),
-                stack: self.stacks.read(player),
-                draw_index: self.global_draw_index.read(),
-                shoe_commitment: self.shoe_commitment.read(),
-                hole_hidden: self.hole_hidden.read(player),
-                player_len: self.player_len.read(player),
-                dealer_len: self.dealer_len.read(player),
-            }
-        }
-
-        fn get_player_card(self: @ContractState, player: ContractAddress, index: u8) -> u8 {
-            self.player_cards.read((player, index))
-        }
-
-        fn get_dealer_card(self: @ContractState, player: ContractAddress, index: u8) -> u8 {
-            self.dealer_cards.read((player, index))
-        }
-
-        fn seed(self: @ContractState) -> felt252 {
-            self.seed.read()
-        }
-
-        fn wager_war(self: @ContractState) -> ContractAddress {
-            self.wager_war.read()
-        }
-
-        fn owner(self: @ContractState) -> ContractAddress {
-            self.owner.read()
-        }
-    }
-
-    #[generate_trait]
-    impl InternalImpl of InternalTrait {
         fn report_wager(
             ref self: ContractState, player: ContractAddress, amount: u256, new_hand: bool,
         ) {

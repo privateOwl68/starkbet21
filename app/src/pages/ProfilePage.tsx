@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import { createWagerWarClient } from "../lib/wagerWar";
+import { getDeployment } from "../lib/deployment";
+import { formatStack, formatWarVolume } from "../lib/money";
+import { createWagerWarClient, localWarTracker } from "../lib/wagerWar";
 import { badgeLabel, rewardsForRank } from "../lib/warRewards";
-import { localWarTracker } from "../lib/wagerWar";
-import deployment from "../lib/deployments.local.json";
 
 type Props = {
-  bankroll?: number;
+  bankroll?: number | bigint;
   onPlay: () => void;
 };
 
+function bankrollLabel(bankroll: number | bigint) {
+  if (typeof bankroll === "bigint") return formatStack(bankroll);
+  return `$${bankroll.toLocaleString()}`;
+}
+
 export function ProfilePage({ bankroll = 0, onPlay }: Props) {
+  const deployment = getDeployment();
   const [volume, setVolume] = useState(0n);
   const [rank, setRank] = useState<number | null>(null);
   const [hands, setHands] = useState(0);
@@ -97,11 +103,11 @@ export function ProfilePage({ bankroll = 0, onPlay }: Props) {
           <div className="profile-kpis">
             <article className="glass-panel profile-kpi">
               <span>Bankroll</span>
-              <strong>${bankroll.toLocaleString()}</strong>
+              <strong>{bankrollLabel(bankroll)}</strong>
             </article>
             <article className="glass-panel profile-kpi">
               <span>War Volume #{seasonId || "—"}</span>
-              <strong>${volume.toLocaleString()}</strong>
+              <strong>{formatWarVolume(volume)}</strong>
             </article>
             <article className="glass-panel profile-kpi">
               <span>Hands (war)</span>
@@ -171,12 +177,12 @@ export function ProfilePage({ bankroll = 0, onPlay }: Props) {
               <li>
                 <span>War #{seasonId || 1}</span>
                 <span>{hands} hands</span>
-                <span className="is-gain">${volume.toLocaleString()} vol</span>
+                <span className="is-gain">{formatWarVolume(volume)} vol</span>
               </li>
               <li>
                 <span>Local shoe</span>
                 <span>Practice</span>
-                <span>${bankroll.toLocaleString()} stack</span>
+                <span>{bankrollLabel(bankroll)} stack</span>
               </li>
               <li>
                 <span>Sealed deals</span>

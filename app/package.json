@@ -9,9 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@starknet-io/get-starknet-discovery": "^6.0.2",
+    "@starknet-io/get-starknet-wallet-standard": "^6.0.2",
+    "@starknet-io/types-js": "^0.10.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "starknet": "^10.0.2"
+    "starknet": "^10.4.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

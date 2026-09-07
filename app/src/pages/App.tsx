@@ -1,56 +1,59 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell, type AppScreen } from "../components/AppShell";
+import { useTableChips } from "../lib/useTableChips";
 import { ChainTablePage } from "./ChainTablePage";
 import { LobbyPage } from "./LobbyPage";
 import { ProfilePage } from "./ProfilePage";
-import { TablePage } from "./TablePage";
 import { WagerWarPage } from "./WagerWarPage";
-
-type PlayMode = "local" | "localnet";
 
 export function App() {
   const [screen, setScreen] = useState<AppScreen>("lobby");
-  const [playMode, setPlayMode] = useState<PlayMode>("localnet");
-  const [chips, setChips] = useState(0);
-  const [pot, setPot] = useState(0);
+  const [pot, setPot] = useState<number | bigint>(0);
+  const { stack: chainChips, refresh: refreshChainChips, syncStack } = useTableChips();
 
-  const enterTable = (mode: PlayMode) => {
-    setPlayMode(mode);
+  const enterTable = () => {
     setScreen("table");
+    void refreshChainChips({ silent: true });
   };
+
+  const onChainStackChange = useCallback(
+    (stack: bigint, bet: bigint) => {
+      syncStack(stack);
+      setPot(bet);
+    },
+    [syncStack],
+  );
+
+  useEffect(() => {
+    void refreshChainChips({ silent: true });
+  }, [refreshChainChips]);
 
   return (
     <AppShell
       screen={screen}
-      onNavigate={setScreen}
-      chips={chips}
+      onNavigate={(s) => {
+        setScreen(s);
+        if (s === "lobby" || s === "profile") void refreshChainChips({ silent: true });
+      }}
+      chips={chainChips}
       pot={pot}
     >
-      {screen === "lobby" && <LobbyPage onEnterTable={enterTable} />}
-      {screen === "profile" && (
-        <ProfilePage bankroll={chips} onPlay={() => setScreen("table")} />
+      {screen === "lobby" && (
+        <LobbyPage
+          onEnterTable={enterTable}
+          tableStack={chainChips}
+          onStackRefresh={() => void refreshChainChips({ silent: false })}
+        />
       )}
+      {screen === "profile" && <ProfilePage bankroll={chainChips} onPlay={enterTable} />}
       {screen === "war" && <WagerWarPage />}
-      {screen === "table" &&
-        (playMode === "localnet" ? (
-          <ChainTablePage
-            onOpenWar={() => setScreen("war")}
-            onStackChange={(stack, bet) => {
-              setChips(stack);
-              setPot(bet);
-            }}
-            compactChrome
-          />
-        ) : (
-          <TablePage
-            onOpenWar={() => setScreen("war")}
-            onStackChange={(stack, bet) => {
-              setChips(stack);
-              setPot(bet);
-            }}
-            compactChrome
-          />
-        ))}
+      {screen === "table" && (
+        <ChainTablePage
+          onOpenWar={() => setScreen("war")}
+          onStackChange={onChainStackChange}
+          compactChrome
+        />
+      )}
     </AppShell>
   );
 }

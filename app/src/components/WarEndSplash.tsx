@@ -1,4 +1,5 @@
 import { badgeLabel, type WarReward } from "../lib/warRewards";
+import { formatWarVolume } from "../lib/money";
 
 type Props = {
   seasonId: number;
@@ -8,7 +9,6 @@ type Props = {
 };
 
 export function WarEndSplash({ seasonId, reward, volume, onContinue }: Props) {
-  const vol = typeof volume === "bigint" ? volume : BigInt(volume);
   return (
     <div className="splash splash--bj war-end" role="dialog" aria-modal="true" aria-label="War results">
       <div className="splash__scrim" />
@@ -24,7 +24,7 @@ export function WarEndSplash({ seasonId, reward, volume, onContinue }: Props) {
         <dl className="splash__ledger">
           <div>
             <dt>Volume wagered</dt>
-            <dd>${vol.toLocaleString()}</dd>
+            <dd>{formatWarVolume(volume)}</dd>
           </div>
           <div>
             <dt>XP earned</dt>

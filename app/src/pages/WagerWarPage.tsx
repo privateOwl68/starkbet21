@@ -4,6 +4,7 @@ import { WarBanner } from "../components/WarBanner";
 import { WarEndSplash } from "../components/WarEndSplash";
 import { createWagerWarClient, type LeaderRow, type SeasonInfo } from "../lib/wagerWar";
 import { badgeLabel, rewardsForRank, type WarReward } from "../lib/warRewards";
+import { formatWarVolume } from "../lib/money";
 
 export function WagerWarPage() {
   const client = useMemo(() => {
@@ -101,7 +102,7 @@ export function WagerWarPage() {
                   {row.isYou ? "You" : `${row.player.slice(0, 6)}…${row.player.slice(-4)}`}
                 </span>
                 <span className="war-board__hands">{row.hands} hands</span>
-                <span className="war-board__vol">${row.volume.toLocaleString()}</span>
+                <span className="war-board__vol">{formatWarVolume(row.volume)}</span>
               </li>
             ))}
           </ol>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionBar } from "../components/ActionBar";
 import { BrandHeader } from "../components/BrandHeader";
 import { ChipTray } from "../components/ChipTray";
-import { LiveRoundArena } from "../components/LiveRoundArena";
+import { LiveRoundArena, type ParkedSplitHand } from "../components/LiveRoundArena";
 import { WarBanner } from "../components/WarBanner";
 import {
   VictorySplash,
@@ -13,6 +13,7 @@ import {
   type Card,
   type HandResult,
   MIN_BET,
+  MAX_BET,
   STARTING_BANKROLL,
   canDouble,
   canSplit,
@@ -28,6 +29,28 @@ import {
   settleHand,
 } from "../lib/hand";
 import { localWarTracker } from "../lib/wagerWar";
+
+function parkedSplitsFromRound(
+  hands: {
+    cards: Card[];
+    bet: number;
+    result: HandResult | null;
+  }[],
+  activeHand: number,
+): ParkedSplitHand[] {
+  if (hands.length < 2) return [];
+  return hands
+    .map((h, i) => ({ hand: h, i }))
+    .filter(({ i }) => i !== activeHand)
+    .map(({ hand, i }) => ({
+      cards: hand.cards,
+      bet: hand.bet,
+      result: hand.result ? resultLabel(hand.result) : null,
+      handIndex: i,
+      // Park waiting hand opposite the active one so both stay visible on felt.
+      side: (i > activeHand ? "right" : "left") as "left" | "right",
+    }));
+}
 
 type Phase = "betting" | "dealing" | "insurance" | "player" | "dealer" | "done";
 
@@ -106,7 +129,7 @@ export function TablePage({
   const chipsLocked = round.phase !== "betting" || busy;
 
   const onAddChip = (amount: number) => {
-    setBet((b) => Math.min(bankroll, b + amount));
+    setBet((b) => Math.min(bankroll, MAX_BET, b + amount));
   };
 
   const onClearBet = () => setBet(0);
@@ -247,7 +270,7 @@ export function TablePage({
 
   const onDeal = async () => {
     const wager = bet;
-    if (wager < MIN_BET || wager > bankroll || busy || bankroll < MIN_BET) return;
+    if (wager < MIN_BET || wager > bankroll || wager > MAX_BET || busy || bankroll < MIN_BET) return;
 
     setBusy(true);
     const stack = bankroll - wager;
@@ -602,7 +625,7 @@ export function TablePage({
 
       <LiveRoundArena
         shoeLeft={round.deck.length || 52}
-        shoeLabel="Live Shoe · Solo Local"
+        shoeLabel="Velvet Shoe · Solo Practice"
         tableMessage={round.message}
         bankroll={bankroll}
         playerPhase={actionPhase}
@@ -619,6 +642,7 @@ export function TablePage({
           result: displayHand.result ? resultLabel(displayHand.result) : null,
           dealBase: round.activeHand * 4,
         }}
+        parkedSplits={parkedSplitsFromRound(round.hands, round.activeHand)}
         banner={
           <WarBanner
             live={war.live(localWar)}
@@ -632,18 +656,18 @@ export function TablePage({
         controls={
           <>
             <ChipTray
-              bankroll={bankroll}
-              bet={bet}
+              bankroll={BigInt(bankroll)}
+              bet={BigInt(bet)}
               locked={chipsLocked}
-              onAdd={onAddChip}
+              onAdd={(a) => onAddChip(Number(a))}
               onClear={onClearBet}
-              onMax={() => setBet(bankroll)}
-              onDoubleBet={() => setBet((b) => Math.min(bankroll, b * 2 || MIN_BET))}
+              onMax={() => setBet(Math.min(bankroll, MAX_BET))}
+              onDoubleBet={() => setBet((b) => Math.min(bankroll, MAX_BET, b * 2 || MIN_BET))}
             />
             <ActionBar
               busy={busy || round.phase === "dealing"}
               phase={splash ? "dealing" : actionPhase}
-              canDeal={bet >= MIN_BET && bet <= bankroll}
+              canDeal={bet >= MIN_BET && bet <= bankroll && bet <= MAX_BET}
               canHit={canHitNow}
               canStand={canStandNow}
               canDouble={canDoubleNow}

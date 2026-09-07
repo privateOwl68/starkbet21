@@ -1,6 +1,6 @@
 import { Contract, RpcProvider } from "starknet";
 import abi from "./wager_war_abi.json";
-import deployment from "./deployments.local.json";
+import { getDeployment, resolveRpcUrl } from "./deployment";
 import { rewardsForRank, type WarReward } from "./warRewards";
 
 export type SeasonInfo = {
@@ -45,10 +45,7 @@ function asBool(v: unknown): boolean {
 }
 
 function rpcUrl(): string {
-  if (typeof window === "undefined" && deployment.rpcUrl.startsWith("/")) {
-    return "http://127.0.0.1:5051";
-  }
-  return deployment.rpcUrl;
+  return resolveRpcUrl(getDeployment());
 }
 
 function shortAddr(a: string) {
@@ -56,10 +53,11 @@ function shortAddr(a: string) {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
-export function createWagerWarClient() {
-  const warAddress = (deployment as { wagerWar?: string }).wagerWar;
+export function createWagerWarClient(youAddress?: string) {
+  const deployment = getDeployment();
+  const warAddress = deployment.wagerWar;
   if (!warAddress || warAddress.includes("REPLACE")) {
-    throw new Error("wagerWar missing from deployments.local.json — run ./scripts/deploy_local.sh");
+    throw new Error("wagerWar missing — run ./scripts/deploy_local.sh or deploy_sepolia.sh");
   }
 
   const provider = new RpcProvider({
@@ -71,7 +69,7 @@ export function createWagerWarClient() {
     address: warAddress,
     providerOrAccount: provider,
   });
-  const you = deployment.accountAddress;
+  const you = youAddress ?? deployment.accountAddress ?? "";
 
   async function getSeason(): Promise<SeasonInfo> {
     const raw = (await contract.get_season()) as Record<string, unknown> & unknown[];
@@ -148,16 +146,15 @@ export type LocalWarState = {
 
 /** Off-chain demo tracker (localStorage) so Wager War UI works without chain. */
 export function localWarTracker() {
+  const deployment = getDeployment();
   const now = Math.floor(Date.now() / 1000);
   const start =
-    typeof (deployment as { warStartTs?: number }).warStartTs === "number" &&
-    (deployment as { warStartTs: number }).warStartTs > 0
-      ? (deployment as { warStartTs: number }).warStartTs
+    typeof deployment.warStartTs === "number" && deployment.warStartTs > 0
+      ? deployment.warStartTs
       : now;
   const end =
-    typeof (deployment as { warEndTs?: number }).warEndTs === "number" &&
-    (deployment as { warEndTs: number }).warEndTs > start
-      ? (deployment as { warEndTs: number }).warEndTs
+    typeof deployment.warEndTs === "number" && deployment.warEndTs > start
+      ? deployment.warEndTs
       : start + 3600;
 
   function read(): LocalWarState {

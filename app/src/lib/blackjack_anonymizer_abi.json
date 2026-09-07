@@ -1,0 +1,126 @@
+[
+  {
+    "type": "impl",
+    "name": "BlackjackAnonymizerImpl",
+    "interface_name": "shoe::blackjack_anonymizer::IBlackjackAnonymizer"
+  },
+  {
+    "type": "struct",
+    "name": "shoe::open_note::OpenNoteDeposit",
+    "members": [
+      {
+        "name": "note_id",
+        "type": "core::felt252"
+      },
+      {
+        "name": "token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u128"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "core::array::Span::<shoe::open_note::OpenNoteDeposit>",
+    "members": [
+      {
+        "name": "snapshot",
+        "type": "@core::array::Array::<shoe::open_note::OpenNoteDeposit>"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "shoe::blackjack_anonymizer::IBlackjackAnonymizer",
+    "items": [
+      {
+        "type": "function",
+        "name": "privacy_invoke",
+        "inputs": [
+          {
+            "name": "op",
+            "type": "core::integer::u8"
+          },
+          {
+            "name": "player",
+            "type": "core::starknet::contract_address::ContractAddress"
+          },
+          {
+            "name": "amount",
+            "type": "core::integer::u128"
+          },
+          {
+            "name": "note_id",
+            "type": "core::felt252"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "core::array::Span::<shoe::open_note::OpenNoteDeposit>"
+          }
+        ],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "game",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "strk_token",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "privacy_pool",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::starknet::contract_address::ContractAddress"
+          }
+        ],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "constructor",
+    "name": "constructor",
+    "inputs": [
+      {
+        "name": "game",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "strk_token",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "privacy_pool",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "shoe::blackjack_anonymizer::blackjack_anonymizer::Event",
+    "kind": "enum",
+    "variants": []
+  }
+]

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionBar } from "../components/ActionBar";
 import { BrandHeader } from "../components/BrandHeader";
 import { ChipTray } from "../components/ChipTray";
 import { LiveRoundArena } from "../components/LiveRoundArena";
+import { PrivacyPanel } from "../components/PrivacyPanel";
 import { WarBanner } from "../components/WarBanner";
 import {
   VictorySplash,
@@ -13,11 +14,17 @@ import {
   PHASE_DONE,
   PHASE_IDLE,
   PHASE_PLAYER,
-  createLocalnetClient,
-  type LocalnetClient,
+  createGameClient,
+  createRelayerAccount,
+  type GameClient,
 } from "../lib/gameContract";
+import { ApprovalPanel } from "../components/ApprovalPanel";
+import { useWallet } from "../lib/WalletContext";
+import { isPublicNetwork } from "../lib/deployment";
+import { MIN_BET_WEI, MAX_BET_WEI } from "../lib/money";
 import {
   MIN_BET,
+  MAX_BET,
   isBust,
   settleHand,
   resultLabel,
@@ -25,6 +32,8 @@ import {
   type HandResult,
 } from "../lib/hand";
 import { createWagerWarClient } from "../lib/wagerWar";
+import { RpcProvider } from "starknet";
+import { resolveRpcUrl } from "../lib/deployment";
 
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
@@ -37,23 +46,94 @@ function dealMs() {
   return 560;
 }
 
+/** Victory splash still uses a number; map wei bets to 0.01-STRK units. */
+function splashWager(onChainBet: bigint, fallback: bigint) {
+  const b = onChainBet > 0n ? onChainBet : fallback;
+  if (b >= MIN_BET_WEI) {
+    const units = Number(b / MIN_BET_WEI);
+    return Number.isFinite(units) && units > 0 ? units : 1;
+  }
+  const n = Number(b);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function sameAddr(a: string, b: string) {
+  try {
+    return BigInt(a) === BigInt(b);
+  } catch {
+    return a.toLowerCase() === b.toLowerCase();
+  }
+}
+
 type UiPhase = "betting" | "dealing" | "player" | "dealer" | "done";
 
 type Props = {
   onOpenWar?: () => void;
-  onStackChange?: (stack: number, bet: number) => void;
+  onStackChange?: (stack: bigint, bet: bigint) => void;
   compactChrome?: boolean;
 };
 
 export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Props) {
-  const client = useMemo(() => createLocalnetClient(), []);
+  const { account, address, deployment, connectWallet, useLocalnetDemo, connecting } = useWallet();
+  const [relayPlay, setRelayPlay] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [relayTick, setRelayTick] = useState(0);
+
+  const onStackChangeRef = useRef(onStackChange);
+  onStackChangeRef.current = onStackChange;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!account || !address) {
+        if (!cancelled) setRelayPlay(false);
+        return;
+      }
+      const relayer = createRelayerAccount(deployment);
+      if (!relayer) {
+        if (!cancelled) setRelayPlay(false);
+        return;
+      }
+      try {
+        const probe = createGameClient({ account, playerAddress: address, deployment });
+        const op = await probe.getOperator();
+        if (!cancelled) {
+          setRelayPlay(op !== "0x0" && sameAddr(op, relayer.address));
+        }
+      } catch {
+        if (!cancelled) setRelayPlay(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [account, address, deployment, relayTick]);
+
+  const client = useMemo((): GameClient | null => {
+    if (!account || !address) return null;
+    try {
+      const relayer = relayPlay ? createRelayerAccount(deployment) : null;
+      return createGameClient({
+        account: relayer ?? account,
+        playerAddress: address,
+        deployment,
+        relayPlay: Boolean(relayer),
+      });
+    } catch {
+      return null;
+    }
+  }, [account, address, deployment, relayPlay]);
+  const vaultMode = Boolean(deployment.anonymizer && !deployment.anonymizer.includes("REPLACE"));
+  const minBet = vaultMode ? MIN_BET_WEI : BigInt(MIN_BET);
+  const maxBet = vaultMode ? MAX_BET_WEI : BigInt(MAX_BET);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** True while waiting for an on-chain tx — card faces stay sealed. */
   const [sealing, setSealing] = useState(false);
-  const [bankroll, setBankroll] = useState(0);
-  const [bet, setBet] = useState(0);
+  const [bankroll, setBankroll] = useState(0n);
+  const [bet, setBet] = useState(0n);
   const [player, setPlayer] = useState<Card[]>([]);
   const [dealer, setDealer] = useState<Card[]>([]);
   const [holeHidden, setHoleHidden] = useState(true);
@@ -73,11 +153,11 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
 
   const warClient = useMemo(() => {
     try {
-      return createWagerWarClient();
+      return createWagerWarClient(address ?? undefined);
     } catch {
       return null;
     }
-  }, []);
+  }, [address]);
 
   const refreshWar = useCallback(async () => {
     if (!warClient) return;
@@ -104,11 +184,11 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
   }, []);
 
   const applySnapshot = useCallback(
-    async (c: LocalnetClient, animateDeal: boolean, wagerForSplash?: number) => {
+    async (c: GameClient, animateDeal: boolean, wagerForSplash?: number) => {
       const snap = await c.snapshot();
       const { round } = snap;
-      setBankroll(Number(round.stack));
-      onStackChange?.(Number(round.stack), Number(round.bet));
+      setBankroll(round.stack);
+      onStackChangeRef.current?.(round.stack, round.bet);
       setCommitment(round.shoeCommitment);
       setDrawIndex(round.drawIndex);
       setOnChainPhase(round.phase);
@@ -150,7 +230,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
         setHoleHidden(false);
         const result = settleHand(snap.player, snap.dealer, false);
         setMessage(resultLabel(result));
-        const wager = wagerForSplash ?? (Number(round.bet) || 0);
+        const wager = wagerForSplash ?? splashWager(round.bet, 0n);
         if (wager > 0) openSplash(result, wager, snap.player, snap.dealer);
       } else {
         setPhase("betting");
@@ -159,15 +239,23 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
         setMessage(null);
       }
     },
-    [openSplash, onStackChange],
+    [openSplash],
   );
 
   useEffect(() => {
     let cancelled = false;
+    if (!client) {
+      setReady(false);
+      return;
+    }
     (async () => {
       try {
         setBusy(true);
-        await client.ensureBuyIn(5000n);
+        setError(null);
+        // Vault / Sepolia: chips come from private buy-in, not free demo mint.
+        if (!vaultMode) {
+          await client.ensureBuyIn(5000n);
+        }
         if (cancelled) return;
         await applySnapshot(client, false);
         if (!cancelled) setReady(true);
@@ -180,7 +268,8 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
     return () => {
       cancelled = true;
     };
-  }, [client, applySnapshot]);
+    // Only re-init when the client identity / vault mode changes — not on every parent render.
+  }, [client, applySnapshot, vaultMode]);
 
   const beginSeal = (msg: string, slots?: { player: number; dealer: number }) => {
     setSealing(true);
@@ -198,7 +287,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
   };
 
   const onDeal = async () => {
-    if (busy || bet < MIN_BET || bet > bankroll) return;
+    if (!client || busy || bet < minBet || bet > bankroll || bet > maxBet) return;
     const wager = bet;
     beginSeal("Sealing deal on-chain…", { player: 2, dealer: 2 });
     setPhase("dealing");
@@ -209,9 +298,9 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
       if (onChainPhase === PHASE_DONE) {
         await client.settle();
       }
-      await client.deal(BigInt(wager));
+      await client.deal(wager);
       setSealing(false);
-      await applySnapshot(client, true, wager);
+      await applySnapshot(client, true, splashWager(wager, 0n));
       void refreshWar();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -225,7 +314,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
   };
 
   const onHit = async () => {
-    if (busy) return;
+    if (!client || busy) return;
     const before = player.length;
     beginSeal("Sealing hit on-chain…");
     // Keep existing cards face-down until the tx confirms.
@@ -237,7 +326,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
       await sleep(40);
       setPlayer(snap.player);
       setDealer(snap.dealer);
-      setBankroll(Number(snap.round.stack));
+      setBankroll(snap.round.stack);
       setOnChainPhase(snap.round.phase);
       setHoleHidden(snap.round.holeHidden);
       setDrawIndex(snap.round.drawIndex);
@@ -247,7 +336,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
         setHoleHidden(false);
         const result = settleHand(snap.player, snap.dealer, false);
         setMessage(resultLabel(result));
-        openSplash(result, Number(snap.round.bet) || bet, snap.player, snap.dealer);
+        openSplash(result, splashWager(snap.round.bet, bet), snap.player, snap.dealer);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -257,7 +346,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
   };
 
   const onStand = async () => {
-    if (busy) return;
+    if (!client || busy) return;
     beginSeal("Sealing stand on-chain…");
     setPhase("dealer");
     // Do NOT flip the hole or show dealer draws until the tx lands.
@@ -277,13 +366,13 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
       }
       setPlayer(snap.player);
       setDealer(snap.dealer);
-      setBankroll(Number(snap.round.stack));
+      setBankroll(snap.round.stack);
       setOnChainPhase(snap.round.phase);
       setDrawIndex(snap.round.drawIndex);
       setPhase("done");
       const result = settleHand(snap.player, snap.dealer, false);
       setMessage(resultLabel(result));
-      openSplash(result, Number(snap.round.bet) || bet, snap.player, snap.dealer);
+      openSplash(result, splashWager(snap.round.bet, bet), snap.player, snap.dealer);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setPhase("player");
@@ -294,7 +383,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
   };
 
   const onDouble = async () => {
-    if (busy || bankroll < bet) return;
+    if (!client || busy || bankroll < bet) return;
     beginSeal("Sealing double on-chain…");
     setPhase("dealer");
     try {
@@ -313,14 +402,14 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
         setDealer(snap.dealer.slice(0, i + 1));
       }
       setDealer(snap.dealer);
-      setBankroll(Number(snap.round.stack));
+      setBankroll(snap.round.stack);
       setOnChainPhase(snap.round.phase);
-      const wager = Number(snap.round.bet) || bet * 2;
+      const wager = snap.round.bet > 0n ? snap.round.bet : bet * 2n;
       setBet(wager);
       setPhase("done");
       const result = settleHand(snap.player, snap.dealer, false);
       setMessage(resultLabel(result));
-      openSplash(result, wager, snap.player, snap.dealer);
+      openSplash(result, splashWager(wager, bet), snap.player, snap.dealer);
       void refreshWar();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -332,7 +421,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
   };
 
   const onNewRound = async () => {
-    if (busy) return;
+    if (!client || busy) return;
     setBusy(true);
     setError(null);
     setSplash(null);
@@ -344,7 +433,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
         setSealing(false);
       }
       await applySnapshot(client, false);
-      setBet(0);
+      setBet(0n);
       setMessage(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -355,7 +444,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
   };
 
   const onBuyIn = async () => {
-    if (busy) return;
+    if (!client || busy) return;
     setBusy(true);
     try {
       await client.buyIn(1000n);
@@ -383,10 +472,44 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
     ? message
     : (message ?? (commitment ? `commit ${commitment.slice(0, 10)}…` : null));
 
+  if (!client || !address) {
+    return (
+      <main className={`page page--table${compactChrome ? " is-compact" : ""}`}>
+        <div className="wallet-gate glass-panel">
+          <h2>Connect to play on-chain</h2>
+          <p>
+            Sign deals with your Starknet wallet
+            {isPublicNetwork(deployment) ? " on Sepolia" : " (or use the localnet demo key)"}.
+          </p>
+          <div className="wallet-gate__actions">
+            <button
+              type="button"
+              className="btn btn--hit"
+              disabled={connecting}
+              onClick={() => void connectWallet()}
+            >
+              {connecting ? "Connecting…" : "Connect wallet"}
+            </button>
+            {!isPublicNetwork(deployment) && (
+              <button type="button" className="btn ghost" onClick={useLocalnetDemo}>
+                Use localnet demo account
+              </button>
+            )}
+          </div>
+          {error && (
+            <p className="hint" role="alert" style={{ color: "var(--danger)" }}>
+              {error}
+            </p>
+          )}
+        </div>
+      </main>
+    );
+  }
+
   if (!ready && !error) {
     return (
       <main className="page">
-        <p className="tagline">Connecting to localnet…</p>
+        <p className="tagline">Syncing table state…</p>
       </main>
     );
   }
@@ -420,7 +543,7 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
           cards: player,
           concealAll: sealing,
           sealedSlots: player.length === 0 ? sealedSlots.player : 0,
-          bet: bet > 0 ? bet : undefined,
+          bet: bet > 0n ? bet : undefined,
           active: phase === "player" && !sealing,
           result:
             !sealing && phase === "done" && player.length
@@ -444,16 +567,29 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
             <ChipTray
               bankroll={bankroll}
               bet={bet}
+              vaultMode={vaultMode || bankroll >= MIN_BET_WEI}
               locked={busy || sealing || phase !== "betting"}
-              onAdd={(a) => setBet((b) => Math.min(bankroll, b + a))}
-              onClear={() => setBet(0)}
-              onMax={() => setBet(bankroll)}
-              onDoubleBet={() => setBet((b) => Math.min(bankroll, b * 2 || MIN_BET))}
+              onAdd={(a) =>
+                setBet((b) => {
+                  const next = b + a;
+                  const cap = bankroll < maxBet ? bankroll : maxBet;
+                  return next > cap ? cap : next;
+                })
+              }
+              onClear={() => setBet(0n)}
+              onMax={() => setBet(bankroll < maxBet ? bankroll : maxBet)}
+              onDoubleBet={() =>
+                setBet((b) => {
+                  const next = b === 0n ? minBet : b * 2n;
+                  const cap = bankroll < maxBet ? bankroll : maxBet;
+                  return next > cap ? cap : next;
+                })
+              }
             />
             <ActionBar
               busy={busy || sealing}
               phase={splash ? "dealing" : actionPhase}
-              canDeal={bet >= MIN_BET && bet <= bankroll && !sealing}
+              canDeal={bet >= minBet && bet <= bankroll && bet <= maxBet && !sealing}
               canHit={phase === "player" && !sealing}
               canStand={phase === "player" && !sealing}
               canDouble={canDouble}
@@ -467,10 +603,105 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
               onNewRound={onNewRound}
             />
             <div className="actions actions--secondary">
-              <button type="button" className="btn ghost" disabled={busy || sealing} onClick={onBuyIn}>
-                Buy in +1000
-              </button>
+              {vaultMode ? (
+                <>
+                  <button
+                    type="button"
+                    className={`btn btn--gold buy-chips-btn${approvalOpen ? " is-open" : ""}`}
+                    disabled={busy || sealing}
+                    aria-expanded={approvalOpen}
+                    aria-controls="approval-panel"
+                    onClick={() => {
+                      setApprovalOpen((o) => !o);
+                      if (!approvalOpen) setPrivacyOpen(false);
+                    }}
+                  >
+                    {approvalOpen ? "Hide approval" : "Pre-approve"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ghost buy-chips-btn${privacyOpen ? " is-open" : ""}`}
+                    disabled={busy || sealing}
+                    aria-expanded={privacyOpen}
+                    aria-controls="private-buyin-panel"
+                    onClick={() => {
+                      setPrivacyOpen((o) => !o);
+                      if (!privacyOpen) setApprovalOpen(false);
+                    }}
+                  >
+                    {privacyOpen ? "Hide buy-in" : "Buy chips"}
+                  </button>
+                  {relayPlay && (
+                    <span className="relay-badge" title="Table actions signed by the house relayer">
+                      Relayed play
+                    </span>
+                  )}
+                </>
+              ) : (
+                <button type="button" className="btn ghost" disabled={busy || sealing} onClick={onBuyIn}>
+                  Buy in +1000 (demo)
+                </button>
+              )}
             </div>
+            {approvalOpen && vaultMode && (
+              <div id="approval-panel">
+                <ApprovalPanel
+                  compact
+                  onChanged={() => {
+                    setRelayTick((n) => n + 1);
+                    if (client) void applySnapshot(client, false);
+                  }}
+                />
+              </div>
+            )}
+            {privacyOpen && vaultMode && (
+              <PrivacyPanel
+                compact
+                id="private-buyin-panel"
+                tableStack={bankroll}
+                onClose={() => setPrivacyOpen(false)}
+                onBuyInSuccess={async (txHash) => {
+                  if (!client) return;
+                  setBusy(true);
+                  setError(null);
+                  setMessage("Confirming private buy-in…");
+                  try {
+                    const provider = new RpcProvider({
+                      nodeUrl: resolveRpcUrl(deployment),
+                      blockIdentifier: "latest",
+                    });
+                    try {
+                      await provider.waitForTransaction(txHash);
+                    } catch {
+                      /* paymaster / wallet hash may not resolve — poll stack instead */
+                    }
+                    let credited = 0n;
+                    for (let i = 0; i < 12; i++) {
+                      const round = await client.getRound();
+                      if (round.stack > 0n) {
+                        credited = round.stack;
+                        setBankroll(round.stack);
+                        onStackChange?.(round.stack, round.bet);
+                        setOnChainPhase(round.phase);
+                        break;
+                      }
+                      await sleep(2500);
+                    }
+                    if (credited > 0n) {
+                      setMessage("Table chips credited — place a bet to deal");
+                      await applySnapshot(client, false);
+                    } else {
+                      setMessage("Buy-in submitted — Refresh if stack is still empty");
+                      await applySnapshot(client, false);
+                    }
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : String(e));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              />
+            )}
           </>
         }
         footer={
