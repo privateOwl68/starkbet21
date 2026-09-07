@@ -5,4 +5,4 @@ account = "account-1"
 accounts-file = "/Users/sdpbhandari/.starknet_accounts/starknet_open_zeppelin_accounts.json"
 
 [sncast.default]
-account = "sepolia"
+account = "mainnet"

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { shortAddress, useWallet } from "../lib/WalletContext";
 import { formatStack } from "../lib/money";
 
-export type AppScreen = "lobby" | "table" | "profile" | "war";
+export type AppScreen = "lobby" | "table" | "war";
 
 type Props = {
   screen: AppScreen;
@@ -41,9 +41,8 @@ export function AppShell({
 
   const nav: { id: AppScreen; label: string }[] = [
     { id: "table", label: "Table" },
-    { id: "lobby", label: "Lobby & Create" },
+    { id: "lobby", label: "Lobby" },
     { id: "war", label: "Wager War" },
-    { id: "profile", label: "Profile" },
   ];
 
   return (
@@ -117,11 +116,6 @@ export function AppShell({
               )}
             </div>
           )}
-
-          <div className="suite-header__vip" title="VIP">
-            <img src="/brand/dealer-avatar.jpg" alt="" width={32} height={32} />
-            <span>VIP</span>
-          </div>
         </div>
       </header>
 

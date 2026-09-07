@@ -20,7 +20,7 @@ import {
 } from "../lib/gameContract";
 import { ApprovalPanel } from "../components/ApprovalPanel";
 import { useWallet } from "../lib/WalletContext";
-import { isPublicNetwork } from "../lib/deployment";
+import { isPublicNetwork, networkDisplayName } from "../lib/deployment";
 import { MIN_BET_WEI, MAX_BET_WEI } from "../lib/money";
 import {
   MIN_BET,
@@ -479,7 +479,10 @@ export function ChainTablePage({ onOpenWar, onStackChange, compactChrome }: Prop
           <h2>Connect to play on-chain</h2>
           <p>
             Sign deals with your Starknet wallet
-            {isPublicNetwork(deployment) ? " on Sepolia" : " (or use the localnet demo key)"}.
+            {isPublicNetwork(deployment)
+              ? ` on ${networkDisplayName(deployment.network)}`
+              : " (or use the localnet demo key)"}
+            .
           </p>
           <div className="wallet-gate__actions">
             <button

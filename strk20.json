@@ -1,0 +1,14 @@
+{
+  "transactions": [
+    "0x52ca2e096b11cc497e3374c8b1f1e1b718886a3545e07afe94455c9220ce94e",
+    "0x312910b1fc991aefdd9991dbecceb24a171eafefca4614a40005de0789af7f6",
+    "0x5e028d3c1aaa862bb9c9aa7ee8f8fc65372941999d8071e0f481293106fc29d"
+  ],
+  "contracts": [
+    "0x07f0ac89868b779a2611e78e7ad99765d192002cc3dafb97a045705962947fb7",
+    "0x051b53e4e95c5643507ed07b5d5736486f8e7810b147813ab374c394ffe8abf0",
+    "0x051b53e4e95c5643507ed07b5d5736486f8e7810b147813ab374c394ffe8abf0"
+  ],
+  "demo_video": "",
+  "demo_url": "https://starkbet21.netlify.app/"
+}

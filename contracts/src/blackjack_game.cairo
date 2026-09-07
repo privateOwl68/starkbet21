@@ -56,8 +56,9 @@ mod blackjack_game {
     impl BlackjackGameImpl of IBlackjackGame<ContractState> {
         fn buy_in(ref self: ContractState, amount: u256) {
             assert(amount > 0, 'amount=0');
-            // Free mint for localnet / faucet demos. Prefer credit_buy_in via STRK20 anonymizer
-            // once the vault is configured.
+            // Free mint for localnet / faucet demos only. Once set_strk_vault runs
+            // (Sepolia/mainnet), chips must come from deposit_strk or credit_buy_in.
+            assert(self.strk_token.read().is_zero(), 'free buy_in disabled');
             let player = get_caller_address();
             let bal = self.stacks.read(player);
             self.stacks.write(player, bal + amount);

@@ -14,11 +14,22 @@ import { validateAndParseAddress, type WalletAccountV6 } from "starknet";
 export const OP_BUY_IN = 0;
 export const OP_CASH_OUT = 1;
 
+/** STRK ERC-20 — same address on Sepolia and mainnet. */
 export const SEPOLIA_STRK =
   "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+export const STRK_TOKEN = SEPOLIA_STRK;
 
 export const SEPOLIA_PRIVACY_POOL =
   "0x0254a6b2997ef52e9f830ce1f543f6b29768295e8d17e2267d672c552cfe0d91";
+
+/** Official STRK20 privacy pool (mainnet). */
+export const MAINNET_PRIVACY_POOL =
+  "0x040337b1af3c663e86e333bab5a4b28da8d4652a15a69beee2b677776ffe812a";
+
+export function privacyPoolForNetwork(network?: string): string {
+  const n = (network ?? import.meta.env.VITE_NETWORK ?? "localnet").toLowerCase();
+  return n === "mainnet" ? MAINNET_PRIVACY_POOL : SEPOLIA_PRIVACY_POOL;
+}
 
 export type Strk20Config = {
   strkToken: string;
@@ -134,7 +145,7 @@ export function privateTransfer(
 export function privateBuyIn(cfg: Strk20Config, amount: bigint): Strk20Action[] {
   if (!cfg.anonymizer || cfg.anonymizer.includes("REPLACE") || cfg.anonymizer === "0xANONYMIZER") {
     throw new Error(
-      "Anonymizer not deployed — set anonymizer in deployments or run deploy_sepolia.sh with STRK_TOKEN + PRIVACY_POOL",
+      "Anonymizer not deployed — set anonymizer in deployments or run deploy with STRK_TOKEN + PRIVACY_POOL",
     );
   }
   if (amount <= 0n) throw new Error("Buy-in amount must be > 0");
