@@ -1,4 +1,5 @@
 import { type ReactNode, useMemo, useState } from "react";
+import { formatStack, isVaultStack } from "../lib/money";
 import { formatTotal, handValue, type Card } from "../lib/hand";
 import { HandView } from "./HandView";
 import { RoomLoungeDrawer } from "./RoomLoungeDrawer";
@@ -12,10 +13,21 @@ export type LiveHandProps = {
   sealedSlots?: number;
   hiddenIndices?: number[];
   flippingIndices?: number[];
-  bet?: number;
+  bet?: number | bigint;
   active?: boolean;
   result?: string | null;
   dealBase?: number;
+};
+
+/** Inactive split hand parked on the felt while you play the other. */
+export type ParkedSplitHand = {
+  cards: Card[];
+  bet?: number;
+  result?: string | null;
+  /** 0-based hand index for labels. */
+  handIndex: number;
+  /** Which side of the felt to park on. */
+  side: "left" | "right";
 };
 
 type Props = {
@@ -26,9 +38,11 @@ type Props = {
   sealing?: boolean;
   sealMessage?: string | null;
   tableMessage?: string | null;
-  bankroll: number;
+  bankroll: number | bigint;
   dealer: LiveHandProps;
   player: LiveHandProps;
+  /** Waiting split hands rendered as muted cards on the felt background. */
+  parkedSplits?: ParkedSplitHand[];
   playerPhase?: "betting" | "player" | "dealer" | "done" | "dealing" | "insurance";
   /** How many seats are playable today (default 1). Extra slots render as open. */
   occupiedSeats?: number;
@@ -38,17 +52,28 @@ type Props = {
   footer?: ReactNode;
 };
 
-function money(n: number) {
+function money(n: number | bigint) {
+  if (typeof n === "bigint") return formatStack(n);
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-function betChipStack(bet: number) {
-  if (bet <= 0) return [] as { label: string; tone: string }[];
-  if (bet >= 1000) return [{ label: "$1K", tone: "gold" }];
-  if (bet >= 500) return [{ label: `$${bet}`, tone: "amethyst" }];
-  if (bet >= 100) return [{ label: `$${bet}`, tone: "obsidian" }];
-  if (bet >= 25) return [{ label: `$${bet}`, tone: "emerald" }];
-  return [{ label: `$${bet}`, tone: "pearl" }];
+function betLabel(bet: number | bigint | undefined) {
+  if (bet == null) return null;
+  if (typeof bet === "bigint") return formatStack(bet);
+  return money(bet);
+}
+
+function betChipStack(bet: number | bigint) {
+  const n = typeof bet === "bigint" ? (isVaultStack(bet) ? Number(bet / 10n ** 16n) : Number(bet)) : bet;
+  if (!n || n <= 0) return [] as { label: string; tone: string }[];
+  if (typeof bet === "bigint" && isVaultStack(bet)) {
+    return [{ label: formatStack(bet), tone: "gold" }];
+  }
+  if (n >= 1000) return [{ label: "$1K", tone: "gold" }];
+  if (n >= 500) return [{ label: `$${n}`, tone: "amethyst" }];
+  if (n >= 100) return [{ label: `$${n}`, tone: "obsidian" }];
+  if (n >= 25) return [{ label: `$${n}`, tone: "emerald" }];
+  return [{ label: `$${n}`, tone: "pearl" }];
 }
 
 function OpenSeat({ index }: { index: number }) {
@@ -71,6 +96,41 @@ function OpenSeat({ index }: { index: number }) {
   );
 }
 
+function SplitPark({ hand }: { hand: ParkedSplitHand }) {
+  const total = hand.cards.length ? formatTotal(hand.cards) : "—";
+  const waiting = !hand.result;
+
+  return (
+    <div
+      className={`split-park split-park--${hand.side}${waiting ? " is-waiting" : ""}`}
+      aria-label={`Split hand ${hand.handIndex + 1} ${waiting ? "waiting" : hand.result ?? ""}`}
+    >
+      <div className="split-park__ghost" aria-hidden>
+        <span className="split-park__ghost-card" />
+        <span className="split-park__ghost-card" />
+      </div>
+      <div className="split-park__label">
+        <span>Hand {hand.handIndex + 1}</span>
+        <strong>{waiting ? "Waiting" : hand.result}</strong>
+        <em>{total}</em>
+      </div>
+      <HandView
+        label={`Hand ${hand.handIndex + 1}`}
+        cards={hand.cards}
+        bet={hand.bet}
+        result={hand.result}
+        dealBase={hand.handIndex * 4}
+        throwTo="player"
+        hideMeta
+        active={false}
+      />
+      {(hand.bet ?? 0) > 0 && (
+        <span className="split-park__bet">{betLabel(hand.bet ?? 0)}</span>
+      )}
+    </div>
+  );
+}
+
 function PlayerSeat({
   player,
   bankroll,
@@ -78,15 +138,19 @@ function PlayerSeat({
   playerStatus,
   playerPhase,
   sealing,
+  splitLabel,
 }: {
   player: LiveHandProps;
-  bankroll: number;
+  bankroll: number | bigint;
   playerBadge: string;
   playerStatus: string;
   playerPhase: string;
   sealing: boolean;
+  splitLabel?: string | null;
 }) {
   const yourChips = betChipStack(player.bet ?? 0);
+  const betAmt = player.bet ?? 0;
+  const hasBet = typeof betAmt === "bigint" ? betAmt > 0n : betAmt > 0;
 
   return (
     <div
@@ -94,20 +158,21 @@ function PlayerSeat({
       data-seat={0}
     >
       {player.active && <div className="seat__aura" aria-hidden />}
+      {splitLabel && <span className="seat__split-tag">{splitLabel}</span>}
       <HandView
         label={`You · ${playerBadge}`}
         cards={player.cards}
         concealAll={player.concealAll}
         sealedSlots={player.sealedSlots}
         flippingIndices={player.flippingIndices}
-        bet={player.bet}
+        bet={typeof player.bet === "bigint" ? undefined : player.bet}
         active={player.active}
         result={player.result}
         dealBase={player.dealBase ?? 0}
         throwTo="player"
         hideMeta
       />
-      {(player.bet ?? 0) > 0 && (
+      {hasBet && (
         <div className="seat__wager seat__wager--you">
           <div className="seat__chip-stack">
             {yourChips.map((ch, i) => (
@@ -116,7 +181,7 @@ function PlayerSeat({
               </span>
             ))}
           </div>
-          <span className="seat__wager-total is-gold">{money(player.bet ?? 0)}</span>
+          <span className="seat__wager-total is-gold">{betLabel(betAmt)}</span>
         </div>
       )}
       {player.active && !sealing && (
@@ -163,6 +228,7 @@ export function LiveRoundArena({
   bankroll,
   dealer,
   player,
+  parkedSplits = [],
   playerPhase = "betting",
   occupiedSeats = 1,
   maxSeats = MAX_TABLE_SEATS,
@@ -175,7 +241,6 @@ export function LiveRoundArena({
 
   const seatCount = Math.max(1, Math.min(maxSeats, occupiedSeats));
   const openCount = Math.max(0, maxSeats - seatCount);
-  /** Place open seats evenly around the solo player (left, then right). */
   const leftOpen = Math.floor(openCount / 2);
   const rightOpen = openCount - leftOpen;
 
@@ -209,8 +274,13 @@ export function LiveRoundArena({
               ? "Dealing"
               : "Ready";
 
+  const splitActiveLabel =
+    parkedSplits.length > 0 ? `Playing hand ${Math.floor((player.dealBase ?? 0) / 4) + 1}` : null;
+
   return (
-    <div className={`live-round live-round--solo${sealing ? " is-sealing" : ""}`}>
+    <div
+      className={`live-round live-round--solo${sealing ? " is-sealing" : ""}${parkedSplits.length ? " has-split" : ""}`}
+    >
       <div className="live-round__glow live-round__glow--a" aria-hidden />
       <div className="live-round__glow live-round__glow--b" aria-hidden />
 
@@ -232,11 +302,7 @@ export function LiveRoundArena({
           </div>
         </div>
         <div className="live-ribbon__right">
-          <button
-            type="button"
-            className="live-pill-btn"
-            onClick={() => setHistoryOpen((v) => !v)}
-          >
+          <button type="button" className="live-pill-btn" onClick={() => setHistoryOpen((v) => !v)}>
             <span className="material-symbols-outlined">history</span>
             Shoe history
           </button>
@@ -290,6 +356,10 @@ export function LiveRoundArena({
                 Dealer Must Draw to 16 and Stand on All 17s · Insurance Pays 2 to 1
               </p>
             </div>
+
+            {parkedSplits.map((h) => (
+              <SplitPark key={`park-${h.handIndex}`} hand={h} />
+            ))}
 
             <div className="dealer-zone">
               <div className="dealer-equip">
@@ -359,6 +429,7 @@ export function LiveRoundArena({
                 playerStatus={playerStatus}
                 playerPhase={playerPhase}
                 sealing={sealing}
+                splitLabel={splitActiveLabel}
               />
 
               {Array.from({ length: rightOpen }, (_, i) => (

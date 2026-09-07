@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatWarVolume } from "../lib/money";
 
 type Props = {
   live: boolean;
@@ -25,7 +26,6 @@ export function WarBanner({ live, endTs, volume, rank, seasonId, onOpenBoard }: 
     return () => window.clearInterval(id);
   }, []);
 
-  const vol = typeof volume === "bigint" ? volume : BigInt(volume);
   const ended = !live && seasonId > 0;
 
   return (
@@ -41,7 +41,7 @@ export function WarBanner({ live, endTs, volume, rank, seasonId, onOpenBoard }: 
       </div>
       <div className="war-banner__stats">
         <span>
-          Your volume <strong>${vol.toLocaleString()}</strong>
+          Your volume <strong>{formatWarVolume(volume)}</strong>
         </span>
         <span>
           Rank <strong>{rank != null ? `#${rank}` : "—"}</strong>

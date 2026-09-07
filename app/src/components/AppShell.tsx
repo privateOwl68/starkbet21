@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { shortAddress, useWallet } from "../lib/WalletContext";
+import { formatStack } from "../lib/money";
 
 export type AppScreen = "lobby" | "table" | "profile" | "war";
 
@@ -13,8 +15,8 @@ type Props = {
 
 function money(n: number | bigint | undefined) {
   if (n == null) return "—";
-  const v = typeof n === "bigint" ? Number(n) : n;
-  return `$${v.toLocaleString()}`;
+  if (typeof n === "bigint") return formatStack(n);
+  return `$${n.toLocaleString()}`;
 }
 
 export function AppShell({
@@ -25,6 +27,18 @@ export function AppShell({
   roomCode = "V21-8841",
   children,
 }: Props) {
+  const {
+    address,
+    connecting,
+    connectWallet,
+    disconnectWallet,
+    networkLabel,
+    isDemo,
+    useLocalnetDemo,
+    deployment,
+    strk20Supported,
+  } = useWallet();
+
   const nav: { id: AppScreen; label: string }[] = [
     { id: "table", label: "Table" },
     { id: "lobby", label: "Lobby & Create" },
@@ -45,6 +59,7 @@ export function AppShell({
               ⌘
             </span>
             <span>Penthouse Suite #{roomCode.replace(/^V21-?/, "") || "8841"}</span>
+            <span className="suite-header__net">{networkLabel}</span>
           </div>
         </div>
 
@@ -69,8 +84,40 @@ export function AppShell({
           </div>
           <div className="suite-meter">
             <span className="suite-meter__label">CHIPS</span>
-            <strong className="suite-meter__value suite-meter__value--chips">{money(chips)}</strong>
+            <strong className="suite-meter__value suite-meter__value--chips" title="Table chips in the game contract">
+              {money(chips)}
+            </strong>
           </div>
+
+          {address ? (
+            <div className="suite-wallet">
+              <span className="suite-wallet__addr" title={address}>
+                {isDemo ? "Demo · " : ""}
+                {shortAddress(address)}
+                {strk20Supported ? " · private" : ""}
+              </span>
+              <button type="button" className="btn ghost suite-wallet__btn" onClick={() => void disconnectWallet()}>
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <div className="suite-wallet">
+              <button
+                type="button"
+                className="btn btn--hit suite-wallet__btn"
+                disabled={connecting}
+                onClick={() => void connectWallet()}
+              >
+                {connecting ? "…" : "Connect"}
+              </button>
+              {deployment.network !== "sepolia" && deployment.network !== "mainnet" && (
+                <button type="button" className="btn ghost suite-wallet__btn" onClick={useLocalnetDemo}>
+                  Demo
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="suite-header__vip" title="VIP">
             <img src="/brand/dealer-avatar.jpg" alt="" width={32} height={32} />
             <span>VIP</span>

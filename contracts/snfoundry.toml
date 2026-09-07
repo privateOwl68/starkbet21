@@ -2,3 +2,8 @@
 [sncast.devnet]
 url = "http://127.0.0.1:5051"
 account = "devnet"
+
+[sncast.sepolia]
+url = "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/d_xHOrehGGAh1deAecpJnwLK2pSTF7mi"
+account = "sepolia"
+accounts-file = "/Users/sdpbhandari/.starknet_accounts/starknet_open_zeppelin_accounts.json"

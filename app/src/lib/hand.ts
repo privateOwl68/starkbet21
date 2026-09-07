@@ -169,7 +169,9 @@ export function resultLabel(r: HandResult): string {
   }
 }
 
-export const CHIP_DENOMS = [1, 5, 25, 100, 500, 1000] as const;
+export const CHIP_DENOMS = [1, 10, 25, 50, 100] as const;
 export const STARTING_BANKROLL = 5000;
 /** Lowest chip; Deal stays disabled until the player builds a bet ≥ this. */
 export const MIN_BET = 1;
+/** Table maximum wager (chips). */
+export const MAX_BET = 500;

@@ -1,22 +1,31 @@
-import { CHIP_DENOMS } from "../lib/hand";
+import { CHIP_DENOMS, MAX_BET } from "../lib/hand";
+import {
+  CHIP_DENOMS_WEI,
+  MAX_BET_WEI,
+  chipLabelWei,
+  formatBet,
+  formatStack,
+  isVaultStack,
+} from "../lib/money";
 
 type Props = {
-  bankroll: number;
-  bet: number;
+  bankroll: bigint;
+  bet: bigint;
   locked: boolean;
-  onAdd: (amount: number) => void;
+  onAdd: (amount: bigint) => void;
   onClear: () => void;
   onMax?: () => void;
   onDoubleBet?: () => void;
+  /** Force vault (STRK) chip tray even if stack is still 0. */
+  vaultMode?: boolean;
 };
 
-function dollars(n: number) {
-  return n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `$${n}`;
-}
+const CHIP_TONES = ["chip--1", "chip--10", "chip--25", "chip--50", "chip--100"] as const;
 
-function chipLabel(n: number) {
-  if (n >= 1000) return `$${n / 1000}k`;
-  return `$${n}`;
+function chipClass(amount: bigint, vault: boolean): string {
+  const denoms = vault ? CHIP_DENOMS_WEI : CHIP_DENOMS.map((d) => BigInt(d));
+  const idx = denoms.findIndex((d) => d === amount);
+  return idx >= 0 ? CHIP_TONES[idx] : "chip--1";
 }
 
 export function ChipTray({
@@ -27,58 +36,52 @@ export function ChipTray({
   onClear,
   onMax,
   onDoubleBet,
+  vaultMode,
 }: Props) {
+  const vault = vaultMode || isVaultStack(bankroll) || isVaultStack(bet);
+  const denoms = vault ? CHIP_DENOMS_WEI : CHIP_DENOMS.map((d) => BigInt(d));
+  const maxBet = vault ? MAX_BET_WEI : BigInt(MAX_BET);
+  const betCap = bankroll < maxBet ? bankroll : maxBet;
+
   return (
     <div className="chips chips--console">
       <div className="chips__stats">
         <div className="chips__stat">
-          <span className="chips__label">Stack</span>
-          <strong>{dollars(bankroll)}</strong>
+          <span className="chips__label">{vault ? "Stack (STRK)" : "Stack"}</span>
+          <strong>{formatStack(bankroll)}</strong>
         </div>
-        <div className={`chips__stat chips__bet-spot${bet > 0 ? " is-active" : ""}`}>
+        <div className={`chips__stat chips__bet-spot${bet > 0n ? " is-active" : ""}`}>
           <span className="chips__label">Bet</span>
-          <strong className={bet > 0 ? "is-lit" : ""}>{dollars(bet)}</strong>
+          <strong className={bet > 0n ? "is-lit" : ""}>{formatBet(bet, vault)}</strong>
         </div>
       </div>
-      <span className="chips__tray-label">Select chip</span>
-      <div className="chips__row" role="group" aria-label="Chip denominations">
-        {CHIP_DENOMS.map((d) => (
+      <div className="chips__tray" role="group" aria-label={vault ? "STRK chip denominations" : "Chip denominations"}>
+        {denoms.map((d) => (
           <button
-            key={d}
+            key={d.toString()}
             type="button"
-            className={`chip chip--${d}`}
-            disabled={locked || bankroll < d || bet + d > bankroll}
+            className={`chip ${chipClass(d, vault)}`}
+            disabled={locked || bankroll < d || bet + d > betCap}
             onClick={() => onAdd(d)}
-            aria-label={`Add ${chipLabel(d)} chip`}
           >
-            {chipLabel(d)}
+            {vault ? chipLabelWei(d) : d.toString()}
           </button>
         ))}
       </div>
-      <div className="chips__quick" role="group" aria-label="Quick bet">
-        <button
-          type="button"
-          className="chips__quick-btn"
-          disabled={locked || bet === 0 || bet * 2 > bankroll}
-          onClick={() => (onDoubleBet ? onDoubleBet() : onAdd(bet))}
-        >
-          2×
+      <div className="chips__quick">
+        <button type="button" className="chips__quick-btn" disabled={locked || bet === 0n} onClick={onClear}>
+          Clear
         </button>
         <button
           type="button"
           className="chips__quick-btn"
-          disabled={locked || bankroll <= 0}
-          onClick={() => onMax?.()}
+          disabled={locked || bet === 0n || bet * 2n > betCap}
+          onClick={onDoubleBet}
         >
+          ×2
+        </button>
+        <button type="button" className="chips__quick-btn" disabled={locked || bankroll <= 0n} onClick={onMax}>
           Max
-        </button>
-        <button
-          type="button"
-          className="chips__quick-btn"
-          disabled={locked || bet === 0}
-          onClick={onClear}
-        >
-          Clr
         </button>
       </div>
     </div>
