@@ -2,6 +2,7 @@
 
 import localDeploy from "./deployments.local.json";
 import sepoliaDeploy from "./deployments.sepolia.json";
+import mainnetDeploy from "./deployments.mainnet.json";
 
 export type NetworkName = "localnet" | "sepolia" | "mainnet";
 
@@ -32,12 +33,65 @@ export function activeNetwork(): NetworkName {
   return "localnet";
 }
 
+/** User-facing network name (Lobby eyebrow, wallet gate, etc.). */
+export function networkDisplayName(network: string = activeNetwork()): string {
+  switch (network.toLowerCase()) {
+    case "mainnet":
+      return "Mainnet";
+    case "sepolia":
+      return "Sepolia";
+    case "localnet":
+    case "devnet":
+      return "Localnet";
+    default:
+      return network.charAt(0).toUpperCase() + network.slice(1);
+  }
+}
+
+/** Deploy script hint for the active (or given) network. */
+export function deployScriptHint(network: string = activeNetwork()): string {
+  switch (network.toLowerCase()) {
+    case "mainnet":
+      return "./scripts/deploy_mainnet.sh";
+    case "sepolia":
+      return "./scripts/deploy_sepolia.sh";
+    default:
+      return "./scripts/deploy_local.sh";
+  }
+}
+
+function isPlaceholderAddress(addr: string | undefined): boolean {
+  if (!addr) return true;
+  return /REPLACE/i.test(addr);
+}
+
+/** True when the active deployment has real contract addresses (not placeholders). */
+export function isDeploymentReady(d: Deployment = getDeploymentUnsafe()): boolean {
+  return !isPlaceholderAddress(d.blackjackGame);
+}
+
+function getDeploymentUnsafe(): Deployment {
+  const network = activeNetwork();
+  if (network === "mainnet") return mainnetDeploy as Deployment;
+  if (network === "sepolia") return sepoliaDeploy as Deployment;
+  return localDeploy as Deployment;
+}
+
 export function getDeployment(): Deployment {
   const network = activeNetwork();
-  if (network === "sepolia" || network === "mainnet") {
-    return sepoliaDeploy as Deployment;
+  const d = getDeploymentUnsafe();
+  if (network === "mainnet" && isPlaceholderAddress(d.blackjackGame)) {
+    throw new Error(
+      "Mainnet contracts not deployed yet — run ./scripts/deploy_mainnet.sh (ALLOW_MAINNET_DEPLOY=1), then restart the app with VITE_NETWORK=mainnet",
+    );
   }
-  return localDeploy as Deployment;
+  if (network === "mainnet" && d.network !== "mainnet") {
+    throw new Error("deployments.mainnet.json has wrong network field");
+  }
+  if (network === "sepolia" && d.network !== "sepolia") {
+    throw new Error("deployments.sepolia.json has wrong network field");
+  }
+  return d;
 }
 
 export function resolveRpcUrl(d: Deployment = getDeployment()): string {

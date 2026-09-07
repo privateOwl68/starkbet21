@@ -7,7 +7,7 @@ import {
   type GameClient,
 } from "../lib/gameContract";
 import { formatWeiAsStrk, parseStrkToWei } from "../lib/strk20";
-import { shortAddress } from "../lib/deployment";
+import { deployScriptHint, networkDisplayName, shortAddress } from "../lib/deployment";
 
 type Props = {
   onChanged?: () => void;
@@ -22,10 +22,12 @@ function sameAddr(a: string, b: string) {
   }
 }
 
-function friendlyError(e: unknown): string {
+function friendlyError(e: unknown, network?: string): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/Entry point .* not found|deposit_strk|set_operator/i.test(msg)) {
-    return "This game contract is outdated — redeploy Sepolia (./scripts/deploy_sepolia.sh) so Approve can mint chips from STRK.";
+    const net = networkDisplayName(network);
+    const script = deployScriptHint(network);
+    return `This game contract is outdated — redeploy ${net} (${script}) so Approve can mint chips from STRK.`;
   }
   if (/vault unset|strk_token/i.test(msg)) {
     return "STRK vault not linked on this game — redeploy with STRK_TOKEN set.";
@@ -95,7 +97,7 @@ export function ApprovalPanel({ onChanged, compact = false }: Props) {
       await refresh();
       onChanged?.();
     } catch (e) {
-      setError(friendlyError(e));
+      setError(friendlyError(e, deployment.network));
     } finally {
       setBusy(false);
     }

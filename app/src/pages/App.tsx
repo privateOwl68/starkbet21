@@ -3,7 +3,6 @@ import { AppShell, type AppScreen } from "../components/AppShell";
 import { useTableChips } from "../lib/useTableChips";
 import { ChainTablePage } from "./ChainTablePage";
 import { LobbyPage } from "./LobbyPage";
-import { ProfilePage } from "./ProfilePage";
 import { WagerWarPage } from "./WagerWarPage";
 
 export function App() {
@@ -33,7 +32,7 @@ export function App() {
       screen={screen}
       onNavigate={(s) => {
         setScreen(s);
-        if (s === "lobby" || s === "profile") void refreshChainChips({ silent: true });
+        if (s === "lobby") void refreshChainChips({ silent: true });
       }}
       chips={chainChips}
       pot={pot}
@@ -45,7 +44,6 @@ export function App() {
           onStackRefresh={() => void refreshChainChips({ silent: false })}
         />
       )}
-      {screen === "profile" && <ProfilePage bankroll={chainChips} onPlay={enterTable} />}
       {screen === "war" && <WagerWarPage />}
       {screen === "table" && (
         <ChainTablePage

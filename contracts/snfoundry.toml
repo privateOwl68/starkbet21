@@ -7,3 +7,8 @@ account = "devnet"
 url = "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_10/d_xHOrehGGAh1deAecpJnwLK2pSTF7mi"
 account = "sepolia"
 accounts-file = "/Users/sdpbhandari/.starknet_accounts/starknet_open_zeppelin_accounts.json"
+
+[sncast.mainnet]
+url = "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/d_xHOrehGGAh1deAecpJnwLK2pSTF7mi"
+account = "mainnet"
+accounts-file = "/Users/sdpbhandari/.starknet_accounts/starknet_open_zeppelin_accounts.json"

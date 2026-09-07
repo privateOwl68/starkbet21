@@ -160,6 +160,19 @@ or pool addresses.
 
 ---
 
+## Judge sprint skills (post–mainnet)
+
+Map remaining score work to skills — see `docs/hackathon-scorecard.md`.
+
+| Score bucket | Work | Skills |
+|--------------|------|--------|
+| Working mainnet | Hosted UI, smoke script, backend relayer | Ops / Vite deploy; keep PK out of browser |
+| STRK20 depth | Shadow seat + recorded private round-trip | `strk20-wallet-api`, `strk20-privacy` |
+| Innovation | Public shoe verifier + VRF note | Fairness domain (`shoe-commitment-spec`); optional prover |
+| Docs | Keep scorecard + README evidence current | — |
+
+---
+
 ## Cross-cutting
 
 - Felt252 / packing / endianness mismatches at Cairo ↔ TS ↔ prover boundaries

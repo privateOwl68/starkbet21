@@ -20,6 +20,7 @@ import {
 import {
   getDeployment,
   isPublicNetwork,
+  networkDisplayName,
   resolveRpcUrl,
   shortAddress,
   type Deployment,
@@ -149,7 +150,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const useLocalnetDemo = useCallback(() => {
     if (isPublicNetwork(deployment)) {
-      setError("Demo key is disabled on Sepolia/mainnet — connect a wallet");
+      setError(`Demo key is disabled on ${networkDisplayName(deployment.network)} — connect a wallet`);
       return;
     }
     const addr = deployment.accountAddress;
@@ -187,7 +188,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     availableWallets,
     error,
     deployment,
-    networkLabel: deployment.network || "localnet",
+    networkLabel: networkDisplayName(deployment.network || "localnet"),
     connectWallet,
     selectWallet,
     closePicker,

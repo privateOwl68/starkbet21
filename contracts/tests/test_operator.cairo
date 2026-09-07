@@ -56,3 +56,20 @@ fn stranger_cannot_deal_for_player() {
     game_d.deal_for(player, 10);
     stop_cheat_caller_address(game);
 }
+
+#[test]
+#[should_panic(expected: 'free buy_in disabled')]
+fn buy_in_disabled_when_vault_set() {
+    let owner = addr(1);
+    let player = addr(2);
+    let game = deploy_game(owner);
+    let game_d = IBlackjackGameDispatcher { contract_address: game };
+
+    start_cheat_caller_address(game, owner);
+    game_d.set_strk_vault(addr(100), addr(101));
+    stop_cheat_caller_address(game);
+
+    start_cheat_caller_address(game, player);
+    game_d.buy_in(1000);
+    stop_cheat_caller_address(game);
+}

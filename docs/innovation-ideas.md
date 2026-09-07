@@ -2,41 +2,51 @@
 
 Ways to raise the **Innovation (25%)** score beyond “another on-chain blackjack.”
 
-## Ship soon (high leverage)
+See also [`hackathon-scorecard.md`](./hackathon-scorecard.md) for full rubric weights.
 
-1. **Public shoe verifier page**  
-   Paste `shoe_id` / commitment + reveal openings; anyone re-checks hole cards against the commitment without trusting the UI. Makes “provably fair” *demonstrable*.
+## Shipped (credit these in the pitch)
+
+| Idea | Status | Judge line |
+|------|--------|------------|
+| Sealed-deal UX | Live | Cards stay face-down until tx receipt — fairness *felt*, not only claimed |
+| Shoe commitment on-chain | Live (mainnet + Sepolia) | Deterministic draw order from published commitment |
+| STRK20 anonymizer buy-in / cash-out | Live contracts + Wallet API UI | Private STRK → table chips without public funding graph |
+| Gasless table via operator `*_for` | Live | One authorize; house relayer plays; cannot cash out |
+| Wager War volume seasons | Live | On-chain volume rank / XP badges |
+| Free mint gated when vault set | Live | Mainnet = STRK collateral only |
+
+## Ship next (highest Innovation leverage)
+
+1. **Public shoe verifier page / CLI**  
+   Paste commitment + reveal openings; anyone re-checks hole cards without trusting the UI. Makes “provably fair” *demonstrable*. **Top Innovation gap.**
 
 2. **VRF (or commit–reveal) shoe seed**  
-   Replace constructor public seed so the house cannot grind favorable shoes. Publish the VRF proof next to the commitment.
+   Replace constructor public seed so the house cannot grind favorable shoes. Publish the VRF proof next to the commitment. Document as end-state even if stub lands first.
 
-3. **Live STRK20 round-trip demo**  
-   One button: shield → private buy-in → play one hand → private cash-out, with explorer links. Depth + innovation together.
+3. **Live mainnet STRK20 round-trip clip**  
+   Shield → private buy-in → one hand → private cash-out with Voyager links. Depth + innovation together.
 
 4. **Shadow-account seat**  
-   Table actions from a deterministic stealth account while chips are funded privately — unlinkable public play.
+   Table actions from a deterministic stealth account while chips are funded privately — unlinkable public play (STRK20 depth + novelty).
 
-## Product-shaped differentiators
+## Product-shaped differentiators (after verifier)
 
-5. **Sealed-deal UX as a protocol guarantee**  
-   Document + enforce “no face until receipt” in the verifier (already UX); add a light client proof that the sealed hash matches post-tx cards.
+5. **Sealed-deal as a protocol guarantee**  
+   Light client check that sealed hash matches post-tx cards (already UX; add verifier hook).
 
 6. **Wager War with on-chain claimable pot**  
-   Vault skim → season winners claim STRK. Volume wars exist elsewhere; *private* volume into a public pot is rarer.
+   Vault skim → season winners claim STRK. Volume wars exist; *private* volume into a public pot is rarer.
 
 7. **Cross-game volume**  
-   Same WagerWar hook for a second mini-game (dice/roulette stub) — platform thesis, not a single table.
+   Same WagerWar hook for a second mini-game stub — platform thesis, not a single table.
 
 ## Research / stretch
 
 8. **Selective disclosure of a single hand**  
-   Player proves “I won this shoe hand” to a third party without revealing all notes (compliance-friendly bragging).
+   Player proves “I won this shoe hand” without revealing all notes.
 
-9. **Paymaster + session key shoe**  
-   One signature at buy-in; gasless hit/stand for the rest of the shoe (AA story judges notice).
-
-9b. **Table operator / pre-deposit (shipped path)**  
-   Player `approve` + `deposit_strk` + `set_operator(relayer)` once; house relayer submits `deal_for` / `hit_for` / … without further wallet popups. Operator cannot cash out.
+9. **Paymaster + session-key shoe**  
+   Protocol-native gasless (beyond house operator relayer).
 
 10. **Open verifier CLI**  
     `npx starkbet21 verify --commitment 0x… --reveals …` for auditors and journalists.
@@ -44,7 +54,7 @@ Ways to raise the **Innovation (25%)** score beyond “another on-chain blackjac
 ## What *not* to chase for this sprint
 
 - Full mental-poker multiplayer crypto  
-- Token launch / DAO votes before a playable mainnet loop  
+- Token launch / DAO votes before a playable mainnet loop + soak  
 - Re-skinning without a new trust or privacy property  
 
-**Recommended combo for judges:** (1) verifier page + (3) live private buy-in demo + (2) VRF note in the README as the fairness end-state.
+**Recommended combo for judges:** (1) verifier page + (3) live private buy-in demo on **mainnet** + (2) VRF note in the README as the fairness end-state + operator gasless already shipped.

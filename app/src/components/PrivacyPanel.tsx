@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWallet } from "../lib/WalletContext";
 import {
-  SEPOLIA_PRIVACY_POOL,
   SEPOLIA_STRK,
   describeTrustBoundary,
   explorerTxUrl,
   fetchPrivateBalances,
   formatWeiAsStrk,
   parseStrkToWei,
+  privacyPoolForNetwork,
   privateBuyIn,
   privateCashOut,
   privateTransfer,
@@ -18,6 +18,7 @@ import {
   type Strk20Action,
 } from "../lib/strk20";
 import { formatStack } from "../lib/money";
+import { activeNetwork } from "../lib/deployment";
 
 type Props = {
   /** Called after a successful private buy-in (refresh table stack). */
@@ -171,7 +172,7 @@ export function PrivacyPanel({ onBuyInSuccess, compact = false, tableStack, id, 
           )}
         </div>
         <p>
-          Live Wallet API submit · Pool <code>{SEPOLIA_PRIVACY_POOL.slice(0, 10)}…</code>
+          Live Wallet API submit · Pool <code>{privacyPoolForNetwork(activeNetwork()).slice(0, 10)}…</code>
           {anonymizerReady ? (
             <>
               {" "}

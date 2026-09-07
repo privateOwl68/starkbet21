@@ -1,0 +1,16 @@
+{
+  "network": "mainnet",
+  "rpcUrl": "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/d_xHOrehGGAh1deAecpJnwLK2pSTF7mi",
+  "chainId": "SN_MAIN",
+  "blackjackGame": "0x073ecbf4d1b6ba5ebf6525d90b6efaf33d7a8daf35769232d4d1066614e722db",
+  "wagerWar": "0x07f0ac89868b779a2611e78e7ad99765d192002cc3dafb97a045705962947fb7",
+  "anonymizer": "0x051b53e4e95c5643507ed07b5d5736486f8e7810b147813ab374c394ffe8abf0",
+  "shoeSeed": "42",
+  "warStartTs": 1788815614,
+  "warEndTs": 1789420414,
+  "classHash": "0x7da297f6fbe4e9be2cd0a377966b4f69029e7bf84f15abafd392d865f046fae",
+  "wagerWarClassHash": "0x4414af636620a5ca31ada78cbb90265c1175cc8a04bdbe1a66d80dd63120133",
+  "anonymizerClassHash": "0x32cd5cbf32b766634d15cf4509cbca3d771c6a55886b561af919217e364f41",
+  "tableRelayer": "0x0224e430809651cee75f56bd36d97fc509f954cf67a078d780830ae346e554ec",
+  "note": "Mainnet deploy \u2014 addresses only. Never put relayer PK in VITE_*. App: VITE_NETWORK=mainnet npm run dev"
+}

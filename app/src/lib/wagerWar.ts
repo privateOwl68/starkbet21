@@ -1,6 +1,6 @@
 import { Contract, RpcProvider } from "starknet";
 import abi from "./wager_war_abi.json";
-import { getDeployment, resolveRpcUrl } from "./deployment";
+import { deployScriptHint, getDeployment, resolveRpcUrl } from "./deployment";
 import { rewardsForRank, type WarReward } from "./warRewards";
 
 export type SeasonInfo = {
@@ -57,7 +57,7 @@ export function createWagerWarClient(youAddress?: string) {
   const deployment = getDeployment();
   const warAddress = deployment.wagerWar;
   if (!warAddress || warAddress.includes("REPLACE")) {
-    throw new Error("wagerWar missing — run ./scripts/deploy_local.sh or deploy_sepolia.sh");
+    throw new Error(`wagerWar missing — run ${deployScriptHint()}`);
   }
 
   const provider = new RpcProvider({

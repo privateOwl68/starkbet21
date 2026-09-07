@@ -43,3 +43,11 @@ coverage/
 contracts/.agents/*
 # Local Netlify folder
 .netlify
+
+
+skillsRequired.md
+PLAN.md
+accounts.json
+
+docs/hackathon-scorecard.md
+docs/innovation-ideas.md

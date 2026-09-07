@@ -9,7 +9,7 @@ import {
   type RawArgs,
 } from "starknet";
 import abi from "./blackjack_abi.json";
-import { getDeployment, resolveRpcUrl, type Deployment } from "./deployment";
+import { deployScriptHint, getDeployment, resolveRpcUrl, type Deployment } from "./deployment";
 import { makeCard, type Card } from "./hand";
 import { SEPOLIA_STRK } from "./strk20";
 
@@ -147,7 +147,9 @@ export async function fetchTableStack(
 export function createGameClient(opts: GameClientOpts) {
   const deployment = opts.deployment ?? getDeployment();
   if (!deployment.blackjackGame || deployment.blackjackGame.includes("REPLACE")) {
-    throw new Error("Blackjack not deployed — run deploy_local.sh or deploy_sepolia.sh");
+    throw new Error(
+      `Blackjack not deployed — run ${deployScriptHint()}`,
+    );
   }
 
   const provider = new RpcProvider({
@@ -236,6 +238,15 @@ export function createGameClient(opts: GameClientOpts) {
     }
   }
 
+  async function supportsChipDeposit(): Promise<boolean> {
+    try {
+      const token = asAddress(await readContract.strk_token());
+      return Boolean(token && token !== "0x0");
+    } catch {
+      return false;
+    }
+  }
+
   return {
     deployment,
     account,
@@ -243,12 +254,18 @@ export function createGameClient(opts: GameClientOpts) {
     playerAddress: player,
     relayPlay,
     async ensureBuyIn(amount = 1000n) {
+      if (await supportsChipDeposit()) {
+        throw new Error("Free buy_in disabled — mint chips via Approve or private buy-in");
+      }
       const round = await getRound();
       if (round.stack === 0n && round.phase === PHASE_IDLE) {
         await invoke("buy_in", [cairo.uint256(amount)]);
       }
     },
     async buyIn(amount: bigint) {
+      if (await supportsChipDeposit()) {
+        throw new Error("Free buy_in disabled — mint chips via Approve or private buy-in");
+      }
       await invoke("buy_in", [cairo.uint256(amount)]);
     },
     async approveStrk(amount: bigint, token = SEPOLIA_STRK) {
@@ -292,14 +309,7 @@ export function createGameClient(opts: GameClientOpts) {
     async depositStrk(amount: bigint) {
       await invoke("deposit_strk", [cairo.uint256(amount)]);
     },
-    async supportsChipDeposit(): Promise<boolean> {
-      try {
-        const token = asAddress(await readContract.strk_token());
-        return Boolean(token && token !== "0x0");
-      } catch {
-        return false;
-      }
-    },
+    supportsChipDeposit,
     async setOperator(operator: string) {
       await invoke("set_operator", [operator]);
     },
