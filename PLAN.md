@@ -168,3 +168,32 @@ execute each phase — including the STRK20 agent skills from
 [odinfree/strk20-skills](https://github.com/odinfree/strk20-skills)
 (`strk20-privacy`, `strk20-wallet-api`, `strk20-anonymizer-contracts`,
 `strk20-privacy-sdk`).
+
+## 4. Phase status (honest snapshot)
+
+| Phase | Intent | Status |
+|-------|--------|--------|
+| 1 Hand logic | Pure scoring | Done (`hand.cairo` + UI mirror) |
+| 2 Shoe commitment | Deterministic shoe | Done (constructor seed; **VRF still open**) |
+| 3 Note encoding | Card/stack notes | Partial — funding notes via STRK20; card notes deferred |
+| 4 BlackjackGame + privacy | Full round + anonymizer | Done — Sepolia + **Mainnet** deployed |
+| 5 Hole-card reveal proof | STARK / open | Commitment open path; full prover deferred |
+| 6 Session keys + paymaster | Gasless shoe | **Operator / relayer path shipped**; native session-key paymaster deferred |
+| 7 Frontend | Table + privacy UX | Done (network-aware Lobby / Table / War) |
+| 8 Deploy + public verifier | Testnet/mainnet + verifier | Deploy **done**; **public verifier still missing** |
+
+## 5. Judge sprint (raise hackathon marks)
+
+Rubric and estimated scores: [`docs/hackathon-scorecard.md`](./docs/hackathon-scorecard.md).
+
+| Priority | Work | Hits |
+|----------|------|------|
+| P0 | Hosted mainnet UI + stranger smoke (1 STRK hand) | Working mainnet 30% |
+| P0 | Backend table relayer (no browser PK) | Working mainnet + security story |
+| P1 | Recorded Ready: shield → private buy-in → play → cash-out | STRK20 depth 30% |
+| P1 | Public shoe verifier page or CLI | Innovation 25% |
+| P2 | Shadow-account table seat | STRK20 depth |
+| P2 | VRF seed doc + stub field next to commitment | Innovation |
+| P3 | Claimable war pot skim | Innovation (after verifier) |
+
+Do **not** divert into SBET / multi-game / full private cards until P0–P1 land.
